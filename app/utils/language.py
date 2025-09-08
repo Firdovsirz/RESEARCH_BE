@@ -1,5 +1,5 @@
-from fastapi import status, Query, Header, HTTPException
 from typing import Optional, Annotated
+from fastapi import status, Query, Header, HTTPException
 
 DEFAULT_LANGUAGE = "en"
 ALLOWED_LANGUAGES = {"en", "az"}
