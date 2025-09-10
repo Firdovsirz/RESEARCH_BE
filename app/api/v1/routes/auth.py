@@ -39,8 +39,22 @@ async def reset_password_endpoint(
 ):
     return await reset_password(reset_request, db)
 
-@router.post("/translate")
-async def translate_endpoint(
-    text: str,
+# Approve user by admin ("/auth/{fin_kod}/approve")
+# Update the approved column in auth to True
+
+@router.post("/{fin_kod}/approve")
+async def approve_user_endpoint(
+    fin_kod: str,
+    db: AsyncSession = Depends(get_db)
 ):
-    return await translate(text)
+    return await approve_user(fin_kod, db)
+
+# Reject user by admin ("/auth/{fin_kod}/reject")
+# Delete user records from auth and user table
+
+@router.post("/{fin_kod}/reject")
+async def reject_user_endpoint(
+    fin_kod: str,
+    db: AsyncSession = Depends(get_db)
+):
+    return await reject_user(fin_kod, db)

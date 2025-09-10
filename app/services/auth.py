@@ -13,8 +13,8 @@ from app.api.v1.schemas.auth import *
 from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.user_translations import UserTranslations
 from app.utils.translator import translate_to_english
+from app.models.user_translations import UserTranslations
 
 templates = Jinja2Templates(directory="templates")
 
@@ -64,10 +64,15 @@ async def signup(
 
         new_user = User(
             fin_kod=signup_request.fin_kod,
+            name=signup_request.name,
+            surname=signup_request.surname,
+            father_name=signup_request.father_name,
             email=signup_request.email,
             birth_date=birth_date_naive,
             created_at=datetime.utcnow()
         )
+
+        translated_work_place = translate_to_english("Azərbaycan Texniki Universiteti")
 
         new_user_translation = UserTranslations(
             fin_kod=signup_request.fin_kod,
@@ -76,13 +81,31 @@ async def signup(
             created_at=datetime.utcnow(),
         )
 
+
+        new_user_translation_en = UserTranslations(
+            fin_kod=signup_request.fin_kod,
+            lang_code="en",
+            work_place=translated_work_place,
+            created_at=datetime.utcnow(),
+        )
+
         db.add(new_auth)
         db.add(new_user)
         db.add(new_user_translation)
+        db.add(new_user_translation_en)
         await db.commit()
         await db.refresh(new_auth)
         await db.refresh(new_user)
         await db.refresh(new_user_translation)
+        await db.refresh(new_user_translation_en)
+
+        subject = "Qeydiyyat"
+
+        html_content = templates.get_template("/email/registration_email.html").render({
+            "name": signup_request.name
+        })
+
+        send_html_email(subject, signup_request.email, signup_request.name, html_content)
 
         return JSONResponse(
             content={
@@ -126,7 +149,7 @@ async def signin(
 
         user = query_user.scalar_one_or_none()
 
-        if not auth_user or not user:
+        if not auth_user or not user or auth_user.approved:
             return JSONResponse(
                 content={
                     "status_code": 401,
@@ -214,7 +237,6 @@ async def reset_password(
                 }, status_code=status.HTTP_404_NOT_FOUND
             )
 
-        # Validate new password
         if reset_request.password != reset_request.repeated_password:
             return JSONResponse(
                 content={
@@ -251,26 +273,101 @@ async def reset_password(
             }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+# Approve user by admin
+# Update the approved column in auth table to True
 
-async def translate(
-    text: str
+async def approve_user(
+    fin_kod: str,
+    db: AsyncSession = Depends(get_db)
 ):
     try:
-        translated_text = translate_to_english(text)
+        user_query = await db.execute(
+            select(Auth)
+            .where(Auth.fin_kod == fin_kod)
+        )
+
+        auth_user = user_query.scalar_one_or_none()
+
+        if not auth_user:
+            return JSONResponse(
+                content={
+                    "status_code": 404,
+                    "message": "User not found."
+                }, status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        if str(auth_user.approved).lower() in ["true", "1"]:
+            return JSONResponse(
+                content={
+                    "status_code": 409,
+                    "message": "User already approved"
+                }, status_code=status.HTTP_409_CONFLICT
+            )
         
+        auth_user.approved = True
+
+        await db.commit()
+        await db.refresh(auth_user)
+
         return JSONResponse(
             content={
                 "status_code": 200,
-                "original_text": text,
-                "translated_text": translated_text
-            }
+                "message": "User approved successfully."
+            }, status_code=status.HTTP_200_OK
         )
     
     except Exception as e:
         return JSONResponse(
             content={
                 "status_code": 500,
-                "error": f"Translation failed: {str(e)}"
-            },
-            status_code=500
+                "error": str(e)
+            }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+# Reject user by admin
+# Delete user records from auth and user table
+
+async def reject_user(
+    fin_kod: str,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        auth_user_query = await db.execute(
+            select(Auth)
+            .where(Auth.fin_kod == fin_kod)
+        )
+        user_query = await db.execute(
+            select(User)
+            .where(User.fin_kod == fin_kod)
+        )
+
+        user = user_query.scalar_one_or_none()
+
+        auth_user = auth_user_query.scalar_one_or_none()
+
+        if not auth_user or not user:
+            return JSONResponse(
+                content={
+                    "status_code": 404,
+                    "message": "User not found."
+                }, status_code=status.HTTP_404_NOT_FOUND
+            )
+        
+        await db.delete(auth_user)
+        await db.delete(user)
+        await db.commit()
+
+        return JSONResponse(
+            content={
+                "status_code": 200,
+                "message": "User rejected successfully."
+            }, status_code=status.HTTP_200_OK
+        )
+    
+    except Exception as e:
+        return JSONResponse(
+            content={
+                "status_code": 500,
+                "error": str(e)
+            }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

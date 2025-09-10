@@ -3,7 +3,8 @@ from sqlalchemy import (
     String,
     Column,
     UniqueConstraint,
-    DateTime
+    DateTime,
+    Boolean
 )
 from app.db.database import Base
 
@@ -19,5 +20,6 @@ class Auth(Base):
     email = Column(String(255), nullable=True, unique=True)
     role = Column(Integer, nullable=False, default=2)
     password = Column(String(255), nullable=True)
+    approved = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, nullable=False)
     updated_at = Column(DateTime)

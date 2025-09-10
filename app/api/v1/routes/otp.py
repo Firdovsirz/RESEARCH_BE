@@ -10,7 +10,7 @@ router = APIRouter()
 # Send otp to the mail by user's fin kod ("/api/otp/send/{fin_kod}")
 # Fin kod pathname
 
-@router.post("/otp/send/{fin_kod}")
+@router.post("/send/{fin_kod}")
 async def send_otp_endpoint(
     fin_kod: str,
     db: AsyncSession = Depends(get_db)
@@ -20,7 +20,7 @@ async def send_otp_endpoint(
 # Validate otp by user's fin kod and otp ("/api/otp/validate")
 # ValidateOtp schema
 
-@router.post("/otp/validate")
+@router.post("/validate")
 async def validate_otp_endpoint(
     otp_request: ValidateOtp,
     db: AsyncSession = Depends(get_db)
