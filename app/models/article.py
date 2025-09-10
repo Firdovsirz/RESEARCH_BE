@@ -6,7 +6,7 @@ class Article(Base):
     __tablename__ = 'articles'
 
     id = Column(Integer, primary_key=True, index=True)
-    fin_kod = Column(String(7),ForeignKey("auth.fin_kod"), unique=True, nullable=False)
+    fin_kod = Column(String(7),ForeignKey("auth.fin_kod"), nullable=False)
     article_code = Column(Text, unique=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)    
 

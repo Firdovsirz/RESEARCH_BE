@@ -30,3 +30,9 @@ class Auth(Base):
         cascade="all, delete-orphan",
         passive_deletes=True
     )
+
+    bios = relationship(
+        "Bio",
+        back_populates="auth",
+        cascade="all, delete-orphan"
+    )
