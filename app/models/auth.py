@@ -36,3 +36,9 @@ class Auth(Base):
         back_populates="auth",
         cascade="all, delete-orphan"
     )
+
+    scientific_names = relationship(
+        "ScientificName",
+        back_populates="auth",
+        cascade="all, delete-orphan"
+    )
