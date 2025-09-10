@@ -6,6 +6,7 @@ from sqlalchemy import select, delete
 from app.models.article import Article
 from sqlalchemy.orm import subqueryload
 from fastapi.responses import JSONResponse
+from app.models.auth import Auth
 from app.models.article_translation import ArticleTranslation
 from app.api.v1.schemas.article import (
     ArticleCreate,
@@ -22,28 +23,45 @@ async def create_article(
         existing_fin_kod_result = await db.execute(
             select(Article).where(Article.fin_kod == article_data.fin_kod)
         )
-        existing_fin_kod = existing_fin_kod_result.scalar_one_or_none()
+        existing_fin_kod_article = existing_fin_kod_result.scalar_one_or_none()
 
-        if existing_fin_kod:
+        if existing_fin_kod_article:
             return JSONResponse(
                 content={
                     "status_code": 409,
-                    "message": "Article with this fin_kod already exists!"
-                }, status_code=status.HTTP_409_CONFLICT
+                    "message": f"User with fin_kod '{article_data.fin_kod}' already has an article!"
+                },
+                status_code=status.HTTP_409_CONFLICT
             )
 
-        existing_article_code_result = await db.execute(
+
+        existing_article_result = await db.execute(
             select(Article).where(Article.article_code == article_data.article_code)
         )
-        existing_article_code = existing_article_code_result.scalar_one_or_none()
+        existing_article = existing_article_result.scalar_one_or_none()
 
-        if existing_article_code:
+        if existing_article:
             return JSONResponse(
                 content={
                     "status_code": 409,
-                    "message": "Article with this code already exists!"
-                }, status_code=status.HTTP_409_CONFLICT
+                    "message": f"There is such an article!"
+                },
+                status_code=status.HTTP_409_CONFLICT
             )
+
+        existing_user_result = await db.execute(
+            select(Auth).where(Auth.fin_kod == article_data.fin_kod)
+        )
+        existing_user = existing_user_result.scalar_one_or_none()
+
+        if not existing_user:
+            return JSONResponse(
+                content={
+                    "status_code": 400,
+                    "message": f"User with fin_kod '{article_data.fin_kod}' does not exist!"
+                }, status_code=status.HTTP_400_BAD_REQUEST
+            )
+
 
         new_article = Article(
             fin_kod=article_data.fin_kod,
