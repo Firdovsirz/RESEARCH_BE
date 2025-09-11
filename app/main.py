@@ -9,6 +9,7 @@ from app.api.v1.routes.cv import router as cv_router
 from app.api.v1.routes.otp import router as otp_router
 from app.api.v1.routes.user import router as user_router
 from app.api.v1.routes.auth import router as auth_router
+from app.api.v1.routes.scopus import router as scopus_router
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
@@ -32,6 +33,7 @@ app.include_router(cv_router, prefix="/api/cv", tags=["CV"])
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
 app.include_router(otp_router, prefix="/api/otp", tags=["OTP"])
 app.include_router(user_router, prefix="/api/user", tags=["User"])
+app.include_router(scopus_router, prefix="/api/scopus", tags=["Scopus"])
 
 @app.get("/")
 def read_root():
