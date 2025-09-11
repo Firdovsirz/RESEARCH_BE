@@ -1,21 +1,28 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from urllib.parse import urlparse
 
-# Shared properties
 class ScopusBase(BaseModel):
     scopus_url: str = Field(..., description="Scopus profile URL")
 
-# Schema for creating a new record
+    @field_validator("scopus_url")
+    @classmethod
+    def validate_scopus_url(cls, v: str):
+        parsed = urlparse(v)
+        if not all([parsed.scheme in ("http", "https"), parsed.netloc]):
+            raise ValueError("Invalid URL. Must start with http:// or https://")
+        if "scopus.com" not in parsed.netloc:
+            raise ValueError("URL must be a valid Scopus profile link (contain scopus.com)")
+        return v
+
 class ScopusCreate(ScopusBase):
     fin_kod: str = Field(..., min_length=7, max_length=7, description="User FIN code (7 characters)")
 
-# Schema for updating
 class ScopusUpdate(ScopusBase):
-    pass  # You can add optional fields here later
+    pass
 
-# Schema for reading (response)
 class ScopusOut(ScopusBase):
     id: int
     fin_kod: str
 
     class Config:
-        orm_mode = True  
+        orm_mode = True
