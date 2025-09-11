@@ -19,7 +19,7 @@ router = APIRouter()
 async def add_scopus_endpoint(
     scopus: ScopusCreate,
     db: AsyncSession = Depends(get_db),
-    token: str = Depends(token_required),
+    # token: str = Depends(token_required),
 ):
     response = await add_scopus_service(
         fin_kod=scopus.fin_kod,
@@ -42,7 +42,7 @@ async def add_scopus_endpoint(
 async def get_scopus_endpoint(
     fin_kod: str,
     db: AsyncSession = Depends(get_db),
-    token: str = Depends(token_required),
+    # token: str = Depends(token_required),
 ):
     response = await get_scopus_service(
         fin_kod=fin_kod,
@@ -65,7 +65,7 @@ async def update_scopus_endpoint(
     fin_kod: str,
     scopus_update: ScopusUpdate,
     db: AsyncSession = Depends(get_db),
-    token: str = Depends(token_required),
+    # token: str = Depends(token_required),
 ):
     response = await update_scopus_service(
         fin_kod=fin_kod,
@@ -87,7 +87,7 @@ async def update_scopus_endpoint(
 async def delete_scopus_endpoint(
     fin_kod: str,
     db: AsyncSession = Depends(get_db),
-    token: str = Depends(token_required),
+    # token: str = Depends(token_required),
 ):
     response = await delete_scopus_service(
         fin_kod=fin_kod,
