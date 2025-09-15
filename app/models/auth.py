@@ -6,6 +6,7 @@ from sqlalchemy import (
     DateTime,
     Boolean
 )
+from sqlalchemy.orm import relationship
 from app.db.database import Base
 
 class Auth(Base):
@@ -23,3 +24,23 @@ class Auth(Base):
     approved = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, nullable=False)
     updated_at = Column(DateTime)
+
+
+    articles = relationship(
+        "Article",
+        back_populates="auth",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+
+    bios = relationship(
+        "Bio",
+        back_populates="auth",
+        cascade="all, delete-orphan"
+    )
+
+    scientific_names = relationship(
+        "ScientificName",
+        back_populates="auth",
+        cascade="all, delete-orphan"
+    )
