@@ -19,6 +19,16 @@ async def singup_endpoint(
 ):
     return await signup(signup_request, db)
 
+# Verify otp
+# Validate requested otp and save user records
+
+@router.post("/signup/verify")
+async def verify_signup_endpoint(
+    otp_request: VerifyOtpRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    return await verify_signup(otp_request, db)
+
 # Sign In endpoint calling signin service ("/auth/singin")
 # SignIn schema
 

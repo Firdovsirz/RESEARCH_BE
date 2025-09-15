@@ -1,8 +1,8 @@
 from sqlalchemy import or_
 from app.utils.jwt import *
 from app.utils.otp import *
-from datetime import datetime
 from app.utils.email import *
+from app.models.otp import Otp
 from app.models.auth import Auth
 from app.models.user import User
 from app.utils.password import *
@@ -10,11 +10,13 @@ from app.db.session import get_db
 from fastapi import Depends, status
 from sqlalchemy.future import select
 from app.api.v1.schemas.auth import *
+from app.utils.otp import generateOtp
+from datetime import datetime, timedelta
+from app.services.otp import validate_otp
 from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.translator import translate_to_english
-from app.models.user_translations import UserTranslations
 
 templates = Jinja2Templates(directory="templates")
 
@@ -49,68 +51,95 @@ async def signup(
         
         await validate_password(signup_request.password)
 
-        hashed_password = hash_password(signup_request.password)
+        otp = await generateOtp()
 
-        new_auth = Auth(
+        hashed_otp = hash_password(otp)
+
+        new_otp = Otp(
             fin_kod=signup_request.fin_kod,
-            email=signup_request.email,
-            password=hashed_password,
-            created_at=datetime.utcnow()
-        )
-
-        birth_date_naive = signup_request.birth_date
-        if birth_date_naive.tzinfo is not None:
-            birth_date_naive = birth_date_naive.replace(tzinfo=None)
-
-        new_user = User(
-            fin_kod=signup_request.fin_kod,
-            name=signup_request.name,
-            surname=signup_request.surname,
-            father_name=signup_request.father_name,
-            email=signup_request.email,
-            birth_date=birth_date_naive,
-            created_at=datetime.utcnow()
-        )
-
-        translated_work_place = translate_to_english("Azərbaycan Texniki Universiteti")
-
-        new_user_translation = UserTranslations(
-            fin_kod=signup_request.fin_kod,
-            lang_code="az",
-            work_place="Azərbaycan Texniki Universiteti",
+            otp=hashed_otp,
             created_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(minutes=5)
         )
 
-
-        new_user_translation_en = UserTranslations(
-            fin_kod=signup_request.fin_kod,
-            lang_code="en",
-            work_place=translated_work_place,
-            created_at=datetime.utcnow(),
-        )
-
-        db.add(new_auth)
-        db.add(new_user)
-        db.add(new_user_translation)
-        db.add(new_user_translation_en)
+        db.add(new_otp)
         await db.commit()
-        await db.refresh(new_auth)
-        await db.refresh(new_user)
-        await db.refresh(new_user_translation)
-        await db.refresh(new_user_translation_en)
+        await db.refresh(new_otp)
+        
+        subject = "OTP"
 
-        subject = "Qeydiyyat"
-
-        html_content = templates.get_template("/email/registration_email.html").render({
-            "name": signup_request.name
+        html_content = templates.get_template("/email/otp_verification.html").render({
+            "name": signup_request.name,
+            "otp_code": otp
         })
 
         send_html_email(subject, signup_request.email, signup_request.name, html_content)
 
         return JSONResponse(
             content={
-                "status_code": 201,
-                "message": "User registered successfully."
+                "status_code": 200,
+                "message": "OTP sent successfully."
+            }, status_code=status.HTTP_200_OK
+        )
+    
+    except Exception as e:
+        return JSONResponse(
+            content={
+                "status_code": 500,
+                "error": str(e)
+            }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+# verify signup with otp
+# validate otp and save user records
+
+async def verify_signup(
+    otp_request: VerifyOtpRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+
+        if not validate_otp(otp_request.fin_kod, otp_request.otp):
+            return JSONResponse(
+                content={
+                    "statusCode": 401,
+                    "message": "Invalid otp"
+                }, status_code=status.HTTP_401_UNAUTHORIZED
+            )
+
+        hashed_password = hash_password(otp_request.password)
+
+        new_auth = Auth(
+            fin_kod=otp_request.fin_kod,
+            email=otp_request.email,
+            password=hashed_password,
+            created_at=datetime.utcnow()
+        )
+
+        birth_date_naive = otp_request.birth_date
+        if birth_date_naive.tzinfo is not None:
+            birth_date_naive = birth_date_naive.replace(tzinfo=None)
+
+        new_user = User(
+            fin_kod=otp_request.fin_kod,
+            name=otp_request.name,
+            surname=otp_request.surname,
+            father_name=otp_request.father_name,
+            email=otp_request.email,
+            birth_date=birth_date_naive,
+            created_at=datetime.utcnow()
+        )
+        db.add(new_auth)
+        db.add(new_user)
+
+        await db.commit()
+        await db.refresh(new_auth)
+        await db.refresh(new_user)
+
+        return JSONResponse(
+            content={
+                "status_code": 2001,
+                "message": "OTP sent successfully."
             }, status_code=status.HTTP_201_CREATED
         )
     
@@ -149,7 +178,7 @@ async def signin(
 
         user = query_user.scalar_one_or_none()
 
-        if not auth_user or not user or auth_user.approved:
+        if not auth_user or not user or not auth_user.approved:
             return JSONResponse(
                 content={
                     "status_code": 401,
