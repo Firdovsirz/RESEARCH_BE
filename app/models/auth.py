@@ -44,3 +44,12 @@ class Auth(Base):
         back_populates="auth",
         cascade="all, delete-orphan"
     )
+
+    publications = relationship(
+        "Publication",
+        back_populates="auth",
+        cascade="all, delete-orphan",
+        passive_deletes=True
+    )
+
+    
