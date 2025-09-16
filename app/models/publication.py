@@ -18,11 +18,6 @@ class Publication(Base):
         passive_deletes=True
     )
 
-    auth = relationship("Auth", back_populates="publications", passive_deletes=True)
+    auth = relationship("Auth", back_populates="publications", passive_deletes=True) 
 
-
-
-
-
-
-
+    from app.models.publication_translation import PublicationTranslation

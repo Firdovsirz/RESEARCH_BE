@@ -7,7 +7,7 @@ class ScientificName(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     fin_kod = Column(String(7),ForeignKey("auth.fin_kod"), unique=True, nullable=False)
-    scientific_name_code = Column(Integer,unique=True ,nullable=False)
+    scientific_name_code = Column(Integer, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)    
 
     translations = relationship(

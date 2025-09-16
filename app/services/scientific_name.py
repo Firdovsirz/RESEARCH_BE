@@ -15,7 +15,8 @@ from app.db.session import get_db
 # CREATE ScientificName
 async def create_scientific_name(
     scientific_name_data: ScientificNameCreate,
-    db: AsyncSession = Depends(get_db)) -> JSONResponse:
+    db: AsyncSession = Depends(get_db)
+) -> JSONResponse:
     try:
         existing_fin_kod_result = await db.execute(
             select(ScientificName).where(ScientificName.fin_kod == scientific_name_data.fin_kod)
@@ -27,21 +28,6 @@ async def create_scientific_name(
                 content={
                     "status_code": 409,
                     "message": f"User with fin_kod '{scientific_name_data.fin_kod}' already has an scientific_name!"
-                },
-                status_code=status.HTTP_409_CONFLICT
-            )
-
-
-        existing_scientific_name_result = await db.execute(
-            select(ScientificName).where(ScientificName.scientific_name_code == scientific_name_data.scientific_name_code)
-        )
-        existing_scientific_name = existing_scientific_name_result.scalar_one_or_none()
-
-        if existing_scientific_name:
-            return JSONResponse(
-                content={
-                    "status_code": 409,
-                    "message": f"There is such an scientific_name_code!"
                 },
                 status_code=status.HTTP_409_CONFLICT
             )
@@ -76,7 +62,6 @@ async def create_scientific_name(
             scientific_name=scientific_name_data.scientific_name,
             created_at=datetime.utcnow()
         )
-        db.add(az_translation)
 
         en_text = await asyncio.to_thread(translate_to_english, scientific_name_data.scientific_name, "az")
         en_translation = ScientificNameTranslation(
@@ -85,6 +70,8 @@ async def create_scientific_name(
             scientific_name=en_text,
             created_at=datetime.utcnow()
         )
+
+        db.add(az_translation)
         db.add(en_translation)
 
         await db.commit()
@@ -108,14 +95,7 @@ async def create_scientific_name(
         return JSONResponse(
             content={
                 "status_code": 201,
-                "message": "ScientificName created successfully!",
-                "data": {
-                    "id": created_scientific_name.id,
-                    "fin_kod": created_scientific_name.fin_kod,
-                    "scientific_name_code": created_scientific_name.scientific_name_code,
-                    "translations": translations,
-                    "created_at": created_scientific_name.created_at.isoformat() if created_scientific_name.created_at else None
-                }
+                "message": "ScientificName created successfully!"
             }, status_code=status.HTTP_201_CREATED
         )
 

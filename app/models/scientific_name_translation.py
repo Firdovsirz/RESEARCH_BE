@@ -12,16 +12,3 @@ class ScientificNameTranslation(Base):
     scientific_name = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
-    scientific_names = relationship("ScientificName", back_populates="translations")
-
-
-
-
-
-
-
-
-
-
-

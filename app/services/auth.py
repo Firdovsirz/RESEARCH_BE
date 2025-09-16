@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.translator import translate_to_english
+import logging
 
 templates = Jinja2Templates(directory="templates")
 
@@ -83,6 +84,7 @@ async def signup(
         )
     
     except Exception as e:
+        logging.exception("Error during signup")
         return JSONResponse(
             content={
                 "status_code": 500,
@@ -138,7 +140,7 @@ async def verify_signup(
 
         return JSONResponse(
             content={
-                "status_code": 2001,
+                "status_code": 201,
                 "message": "OTP sent successfully."
             }, status_code=status.HTTP_201_CREATED
         )
@@ -200,7 +202,7 @@ async def signin(
             content={
                 "status_code": 200,
                 "message": "AUTHORIZED",
-                "date": {
+                "data": {
                     "token": token,
                     "user": {
                         "name": user.name,
@@ -208,6 +210,7 @@ async def signin(
                         "father_name": user.father_name,
                         "fin_kod": user.fin_kod,
                         "email": user.email,
+                        "role": auth_user.role,
                         "birth_date": user.birth_date.isoformat() if user.birth_date else None,
                         "created_at": user.created_at.isoformat() if user.created_at else None,
                         "updated_at": user.updated_at.isoformat() if user.updated_at else None,

@@ -17,7 +17,7 @@ class Auth(Base):
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    fin_kod = Column(String(7), nullable=False, unique=True)
+    fin_kod = Column(String(7), nullable=False, unique=True, index=True)
     email = Column(String(255), nullable=True, unique=True)
     role = Column(Integer, nullable=False, default=2)
     password = Column(String(255), nullable=True)
@@ -52,4 +52,4 @@ class Auth(Base):
         passive_deletes=True
     )
 
-    
+from app.models.publication import Publication
