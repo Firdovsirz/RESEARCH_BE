@@ -14,14 +14,3 @@ class ArticleTranslation(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     article = relationship("Article", back_populates="translations")
-
-
-
-
-
-
-
-
-
-
-

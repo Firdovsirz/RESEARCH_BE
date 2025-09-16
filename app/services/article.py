@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime
+from app.utils.language import get_language
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends, status
 from sqlalchemy import select, delete
@@ -109,6 +110,78 @@ async def create_article(
             }, status_code=status.HTTP_201_CREATED
         )
 
+    except Exception as e:
+        await db.rollback()
+        return JSONResponse(
+            content={
+                "status_code": 500,
+                "error": str(e)
+            }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+async def get_article_by_fin_kod(
+    fin_kod: str,
+    lang_code: str = Depends(get_language),
+    db: AsyncSession = Depends(get_db)
+) -> JSONResponse:
+    try:
+        fin_kod_query = await db.execute(
+            select(Auth)
+            .where(Auth.fin_kod == fin_kod)
+        )
+
+        user = fin_kod_query.scalar_one_or_none()
+
+        if not user:
+            return JSONResponse(
+                content={
+                    "status_code": 404,
+                    "message": "Fin kod is not valid."
+                }, status_code=status.HTTP_404_NOT_FOUND
+            )
+        
+        article_query = await db.execute(
+            select(Article)
+            .where(Article.fin_kod == fin_kod)
+        )
+
+        articles = article_query.scalars().all()
+
+        if not articles:
+            return JSONResponse(
+                content={
+                    "status_code": 204,
+                    "message": "No content"
+                }, status_code=status.HTTP_204_NO_CONTENT
+            )
+        
+        article_arr = []
+
+        for article in articles:
+            translation_query = await db.execute(
+                select(ArticleTranslation)
+                .where(
+                    ArticleTranslation.article_code == article.article_code,
+                    ArticleTranslation.lang_code == lang_code
+                )
+            )
+
+            article_translation = translation_query.scalar_one_or_none()
+
+            article_obj = {
+                "article_field": article_translation.article_field
+            }
+
+            article_arr.append(article_obj)
+        
+        return JSONResponse(
+            content={
+                "status_code": 200,
+                "message": "Articles fetched successfully.",
+                "articles": article_arr
+            }
+        )
+     
     except Exception as e:
         await db.rollback()
         return JSONResponse(

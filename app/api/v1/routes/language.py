@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.services import language as user_languages_service
-from app.api.v1.schemas.language import UserLanguagesRequest, UserLanguagesResponse  # <-- düzəliş
+from app.api.v1.schemas.language import UserLanguagesRequest, UserLanguagesResponse
 
 
 router = APIRouter()

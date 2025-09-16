@@ -9,7 +9,8 @@ from app.services.article import (
     get_all_articles,
     get_article_by_code,
     update_article,
-    delete_article
+    delete_article,
+    get_article_by_fin_kod
 )
 
 router = APIRouter()
@@ -28,6 +29,15 @@ async def list_articles(
     db: AsyncSession = Depends(get_db)
 ):
     return await get_all_articles(db)
+
+# Get articles by fin kod
+@router.get("/fin/{fin_kod}")
+async def get_articles_by_fin_kod_endpoint(
+    fin_kod: str,
+    lang_code: str = Depends(get_language),
+    db: AsyncSession = Depends(get_db)
+):
+    return await get_article_by_fin_kod(fin_kod, lang_code, db)
 
 # GET Article by Code with optional lang
 @router.get("/{article_code}")
