@@ -1,16 +1,12 @@
-from sqlalchemy import or_
 from app.utils.otp import *
 from app.utils.email import *
-from app.models.scopus import Scopus
 from app.models.user import User
 from app.utils.password import *
 from app.db.session import get_db
 from fastapi import Depends, status
+from app.models.scopus import Scopus
 from sqlalchemy.future import select
-from datetime import datetime, timedelta
 from fastapi.responses import JSONResponse
-from app.utils.jwt import encode_otp_token
-from app.api.v1.schemas.user import UpdateUser
 from sqlalchemy.ext.asyncio import AsyncSession
 
 async def add_scopus_service(
@@ -50,6 +46,11 @@ async def add_scopus_service(
             content={"message": f"An error occurred: {str(e)}"},
         )
     
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
 async def get_scopus_service(
     fin_kod: str,
     db: AsyncSession = Depends(get_db),
@@ -71,6 +72,7 @@ async def get_scopus_service(
             },
         )
     except Exception as e:
+        logger.exception(f"Error fetching Scopus entry for fin_kod={fin_kod}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"message": f"An error occurred: {str(e)}"},
@@ -88,7 +90,10 @@ async def update_scopus_service(
         if not scopus_entry:
             return JSONResponse(
                 status_code=status.HTTP_404_NOT_FOUND,
-                content={"message": "Scopus entry not found for this user"},
+                content={
+                    "status_code": 404,
+                    "message": "Scopus entry not found for this user"
+                }
             )
         scopus_entry.scopus_url = scopus_url
         db.add(scopus_entry)
@@ -96,13 +101,19 @@ async def update_scopus_service(
         await db.refresh(scopus_entry)
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content={"message": "Scopus entry updated successfully"},
+            content={
+                "status_code": 200,
+                "message": "Scopus entry updated successfully"
+            }
         )
     except Exception as e:
         await db.rollback()
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"message": f"An error occurred: {str(e)}"},
+            content={
+                "status_code": 500,
+                "message": f"An error occurred: {str(e)}"
+            }
         )
     
 async def delete_scopus_service(

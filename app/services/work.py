@@ -1,29 +1,31 @@
 import random
 from datetime import datetime
 from app.models.auth import Auth
+from app.models.work import Work
 from app.db.session import get_db
 from fastapi import Depends, status
 from sqlalchemy.future import select
-from app.models.language import Language
+from app.api.v1.schemas.work import *
 from app.api.v1.schemas.language import *
 from fastapi.responses import JSONResponse
 from app.utils.language import get_language
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.translator import translate_to_english
+from app.models.work_translations import WorkTranslations
 from app.models.language_translations import LanguageTranslations
 
-def generate_lang_serial() -> str:
+def generate_work_serial() -> str:
     number = random.randint(0, 99999)
-    return f"LANG-{number:05d}"
+    return f"WORK-{number:05d}"
 
-async def add_language(
-    language_request: CreateLanguage,
+async def add_work(
+    work_request: CreateWork,
     db: AsyncSession = Depends(get_db)
 ):
     try:
         user_query = await db.execute(
             select(Auth)
-            .where(Auth.fin_kod == language_request.fin_kod)
+            .where(Auth.fin_kod == work_request.fin_kod)
         )
 
         user = user_query.scalar_one_or_none()
@@ -36,41 +38,39 @@ async def add_language(
                 }, status_code=status.HTTP_404_NOT_FOUND
             )
         
-        lang_serial = generate_lang_serial()
+        work_serial = generate_work_serial()
         
-        new_language = Language(
-            fin_kod=language_request.fin_kod,
-            lang_serial=lang_serial,
-            language_short_name=language_request.language_short_name,
-            language_level=language_request.language_level,
+        new_work = Work(
+            fin_kod=work_request.fin_kod,
+            work_serial=work_serial,
             created_at=datetime.utcnow()
         )
 
-        new_language_az = LanguageTranslations(
-            fin_kod=language_request.fin_kod,
-            lang_serial=lang_serial,
-            lang_code="az",
-            language_name=language_request.language_name,
+        new_work_az = WorkTranslations(
+            work_serial=work_serial,
+            language_code="az",
+            work_place=work_request.work_place,
+            duty=work_request.duty,
             created_at=datetime.utcnow()
         )
 
-        new_language_en = LanguageTranslations(
-            fin_kod=language_request.fin_kod,
-            lang_serial=lang_serial,
-            lang_code="en",
-            language_name=translate_to_english(language_request.language_name),
+        new_work_en = WorkTranslations(
+            work_serial=work_serial,
+            language_code="en",
+            work_place=translate_to_english(work_request.work_place),
+            duty=translate_to_english(work_request.duty),
             created_at=datetime.utcnow()
         )
 
-        db.add(new_language)
-        db.add(new_language_az)
-        db.add(new_language_en)
+        db.add(new_work)
+        db.add(new_work_az)
+        db.add(new_work_en)
 
         await db.commit()
 
-        await db.refresh(new_language)
-        await db.refresh(new_language_az)
-        await db.refresh(new_language_en)
+        await db.refresh(new_work)
+        await db.refresh(new_work_az)
+        await db.refresh(new_work_en)
 
         return JSONResponse(
             content={
@@ -87,7 +87,7 @@ async def add_language(
             }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-async def get_languages_by_fin(
+async def get_works_by_fin(
     fin_kod: str,
     lang_code: str = Depends(get_language),
     db: AsyncSession = Depends(get_db)
@@ -108,16 +108,16 @@ async def get_languages_by_fin(
                 }, status_code=status.HTTP_404_NOT_FOUND
             )
         
-        langs_arr = []
+        works_arr = []
 
-        langs_query = await db.execute(
-            select(Language)
-            .where(Language.fin_kod == fin_kod)
+        works_query = await db.execute(
+            select(Work)
+            .where(Work.fin_kod == fin_kod)
         )
 
-        langs = langs_query.scalars().all()
+        works = works_query.scalars().all()
 
-        if not langs:
+        if not works:
             return JSONResponse(
                 content={
                     "status_code": 204,
@@ -125,30 +125,29 @@ async def get_languages_by_fin(
                 }, status_code=status.HTTP_204_NO_CONTENT
             )
 
-        for lang in langs:
-            lang_translation_query = await db.execute(
-                select(LanguageTranslations)
+        for work in works:
+            work_translation_query = await db.execute(
+                select(WorkTranslations)
                 .where(
-                    LanguageTranslations.lang_serial == lang.lang_serial,
-                    LanguageTranslations.lang_code == lang_code
+                    WorkTranslations.work_serial == work.work_serial,
+                    WorkTranslations.language_code == lang_code
                 )
             )
 
-            lang_translation = lang_translation_query.scalar_one_or_none()
+            work_translation = work_translation_query.scalar_one_or_none()
 
-            language_obj = {
-                "language_short_name": lang.language_short_name,
-                "language_level": lang.language_level,
-                "language_name": lang_translation.language_name
+            work_obj = {
+                "work_place": work_translation.work_place,
+                "duty": work_translation.duty
             }
 
-            langs_arr.append(language_obj)
+            works_arr.append(work_obj)
         
         return JSONResponse(
             content={
                 "status_code": 200,
-                "message": "Languages fetched successfully.",
-                "languages": langs_arr
+                "message": "Works fetched successfully.",
+                "works": works_arr
             }, status_code=status.HTTP_201_CREATED
         )
     

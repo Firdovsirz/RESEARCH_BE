@@ -14,6 +14,3 @@ class PublicationTranslation(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     publication = relationship("Publication", back_populates="translations")
-
-
-

@@ -30,13 +30,13 @@ async def list_publications(
     return await get_all_publications(db)
 
 # GET Publication by Code with optional lang
-@router.get("/{publication_code}")
+@router.get("/{fin_kod}")
 async def get_publication(
-    publication_code: str,
+    fin_kod: str,
     lang: str = Depends(get_language),
     db: AsyncSession = Depends(get_db)
 ):
-    return await get_publication_by_code(publication_code, lang, db)
+    return await get_publication_by_code(fin_kod, lang, db)
 
 # UPDATE Publication
 @router.put("/{publication_code}")

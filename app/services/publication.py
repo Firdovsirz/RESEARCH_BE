@@ -1,39 +1,30 @@
+import random
 import asyncio
 from datetime import datetime
-from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.auth import Auth
+from app.db.session import get_db
 from fastapi import Depends, status
 from sqlalchemy import select, delete
-from app.models.publication import Publication
 from sqlalchemy.orm import subqueryload
 from fastapi.responses import JSONResponse
-from app.models.auth import Auth
+from app.models.publication import Publication
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.utils.translator import translate_to_english
 from app.models.publication_translation import PublicationTranslation
 from app.api.v1.schemas.publication import (
     PublicationCreate,
     PublicationUpdate,
 )
-from app.utils.translator import translate_to_english
-from app.db.session import get_db
+
+def generate_publication_serial() -> str:
+    number = random.randint(0, 99999)
+    return f"PUBLICATION-{number:05d}"
 
 # CREATE Publication
 async def create_publication(
     publication_data: PublicationCreate,
     db: AsyncSession = Depends(get_db)) -> JSONResponse:
     try:
-        existing_publication_result = await db.execute(
-            select(Publication).where(Publication.publication_code == publication_data.publication_code)
-        )
-        existing_publication = existing_publication_result.scalar_one_or_none()
-
-        if existing_publication:
-            return JSONResponse(
-                content={
-                    "status_code": 409,
-                    "message": f"There is such an publication!"
-                },
-                status_code=status.HTTP_409_CONFLICT
-            )
-
         existing_user_result = await db.execute(
             select(Auth).where(Auth.fin_kod == publication_data.fin_kod)
         )
@@ -46,11 +37,12 @@ async def create_publication(
                     "message": f"User with fin_kod '{publication_data.fin_kod}' does not exist!"
                 }, status_code=status.HTTP_400_BAD_REQUEST
             )
-
+        
+        publication_code = generate_publication_serial()
 
         new_publication = Publication(
             fin_kod=publication_data.fin_kod,
-            publication_code=publication_data.publication_code,
+            publication_code=publication_code,
             publication_url=publication_data.publication_url,
             created_at=datetime.utcnow()
         )
@@ -61,7 +53,7 @@ async def create_publication(
 
         # Create az translation
         az_translation = PublicationTranslation(
-            publication_code=new_publication.publication_code,
+            publication_code=publication_code,
             lang_code="az",
             publication_name=publication_data.publication_name,
             created_at=datetime.utcnow()
@@ -71,7 +63,7 @@ async def create_publication(
         # Create en translation
         en_text = await asyncio.to_thread(translate_to_english, publication_data.publication_name, "az")
         en_translation = PublicationTranslation(
-            publication_code=new_publication.publication_code,
+            publication_code=publication_code,
             lang_code="en",
             publication_name=en_text,
             created_at=datetime.utcnow()
@@ -173,51 +165,78 @@ async def get_all_publications(db: AsyncSession = Depends(get_db)) -> JSONRespon
 
 # GET Publication by code with specific language
 async def get_publication_by_code(
-    publication_code: str,
+    fin_kod: str,
     lang: str,
-    db: AsyncSession = Depends(get_db)) -> JSONResponse:
+    db: AsyncSession = Depends(get_db)
+) -> JSONResponse:
     try:
-        publication_result = await db.execute(
-            select(Publication).where(Publication.publication_code == publication_code)
+        auth_result = await db.execute(
+            select(Auth).where(Auth.fin_kod == fin_kod)
         )
-        publication = publication_result.scalar_one_or_none()
+        auth_user = auth_result.scalar_one_or_none()
 
-        if not publication:
+        if not auth_user:
             return JSONResponse(
                 content={
                     "status_code": 404,
                     "message": "Publication not found!"
                 }, status_code=status.HTTP_404_NOT_FOUND
             )
-
-        translation_result = await db.execute(
-            select(PublicationTranslation).where(
-                PublicationTranslation.publication_code == publication_code,
-                PublicationTranslation.lang_code == lang
-            )
+        
+        publication_query = await db.execute(
+            select(Publication)
+            .where(Publication.fin_kod == fin_kod)
         )
-        translation = translation_result.scalar_one_or_none()
 
-        if not translation:
+        publications = publication_query.scalars().all()
+
+        if not publications:
             return JSONResponse(
                 content={
-                    "status_code": 404,
-                    "message": f"No translation found for language '{lang}'!"
-                }, status_code=status.HTTP_404_NOT_FOUND
+                    "status_code": 204,
+                    "message": "No content"
+                }, status_code=status.HTTP_204_NO_CONTENT
             )
+        
+        publications_arr = []
+        
+        for publication in publications:
+
+
+            translation_result = await db.execute(
+                select(PublicationTranslation).where(
+                    PublicationTranslation.publication_code == publication.publication_code,
+                    PublicationTranslation.lang_code == lang
+                )
+            )
+
+            translation = translation_result.scalar_one_or_none()
+
+            if not translation:
+                return JSONResponse(
+                    content={
+                        "status_code": 404,
+                        "message": f"No translation found for language '{lang}'!"
+                    }, status_code=status.HTTP_404_NOT_FOUND
+                )
+            
+            publication_obj = {
+                    "id": publication.id,
+                    "fin_kod": publication.fin_kod,
+                    "publication_url": publication.publication_url,
+                    "publication_code": publication.publication_code,
+                    "publication_name": translation.publication_name,
+                    "lang_code": translation.lang_code,
+                    "created_at": publication.created_at.isoformat() if publication.created_at else None
+            }
+
+            publications_arr.append(publication_obj)
 
         return JSONResponse(
             content={
                 "status_code": 200,
                 "message": "Publication retrieved successfully!",
-                "data": {
-                    "id": publication.id,
-                    "fin_kod": publication.fin_kod,
-                    "publication_code": publication.publication_code,
-                    "publication_name": translation.publication_name,
-                    "lang_code": translation.lang_code,
-                    "created_at": publication.created_at.isoformat() if publication.created_at else None
-                }
+                "publications": publications_arr
             }, status_code=status.HTTP_200_OK
         )
 

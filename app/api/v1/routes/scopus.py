@@ -33,7 +33,7 @@ async def add_scopus_endpoint(
 #-------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 @router.get(
-    "/get-scopus-profile/{fin_kod}",
+    "/scopus/profile/{fin_kod}",
     response_model=ScopusOut,
     status_code=status.HTTP_200_OK,
     summary="Get Scopus URL by FIN code",

@@ -1,18 +1,22 @@
 from fastapi import FastAPI
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 load_dotenv()
 
 import os
 from app.api.v1.routes.cv import router as cv_router
-from app.api.v1.routes.otp import router as otp_router
+from app.api.v1.routes.bio import router as bio_router
+from app.api.v1.routes.work import router as work_router
 from app.api.v1.routes.user import router as user_router
 from app.api.v1.routes.auth import router as auth_router
+from app.api.v1.routes.scopus import router as scopus_router
 from app.api.v1.routes.article import router as article_router
-from app.api.v1.routes.bio import router as bio_router
-from app.api.v1.routes.scientific_name import router as scientific_name_router
 from app.api.v1.routes.language import router as language_router
+from app.api.v1.routes.inter_corp import router as inter_corp_router
+from app.api.v1.routes.publication import router as publication_router
+from app.api.v1.routes.scientific_name import router as scientific_name_router
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
@@ -34,12 +38,20 @@ app.add_middleware(
 
 app.include_router(cv_router, prefix="/api/cv", tags=["CV"])
 app.include_router(auth_router, prefix="/auth", tags=["Auth"])
+app.include_router(user_router, prefix="/api/user", tags=["User"])
 app.include_router(article_router, prefix="/api/article", tags=["Article"])
 app.include_router(bio_router, prefix="/api/bio", tags=["Bio"])
+app.include_router(work_router, prefix="/api/work", tags=["Work"])
+app.include_router(language_router, prefix="/api/language", tags=["Language"])
+app.include_router(publication_router, prefix="/api/publication", tags=["Publication"])
+app.include_router(scopus_router, prefix="/api", tags=["Scopus"])
+app.include_router(inter_corp_router, prefix="/api/inter-corp", tags=["International Coorperation"])
 app.include_router(scientific_name_router, prefix="/api/scientific_name", tags=["ScientificName"])
-app.include_router(language_router,prefix="/api/languages", tags=["Languages"])
 
 
 @app.get("/")
 def read_root():
     return {"message": "AzTU research"}
+
+
+app.mount("/static", StaticFiles(directory="static"), name="static")

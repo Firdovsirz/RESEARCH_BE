@@ -3,7 +3,6 @@ from sqlalchemy import (
     Integer,
     String,
     Column,
-
     Text
 )
 from app.db.database import Base

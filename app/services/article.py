@@ -1,4 +1,5 @@
 import asyncio
+import random
 from datetime import datetime
 from app.utils.language import get_language
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,25 +17,15 @@ from app.api.v1.schemas.article import (
 from app.utils.translator import translate_to_english
 from app.db.session import get_db
 
+def generate_article_serial() -> str:
+    number = random.randint(0, 99999)
+    return f"ARTICLE-{number:05d}"
+
 # CREATE Article
 async def create_article(
     article_data: ArticleCreate,
     db: AsyncSession = Depends(get_db)) -> JSONResponse:
     try:
-        existing_article_result = await db.execute(
-            select(Article).where(Article.article_code == article_data.article_code)
-        )
-        existing_article = existing_article_result.scalar_one_or_none()
-
-        if existing_article:
-            return JSONResponse(
-                content={
-                    "status_code": 409,
-                    "message": f"There is such an article!"
-                },
-                status_code=status.HTTP_409_CONFLICT
-            )
-
         existing_user_result = await db.execute(
             select(Auth).where(Auth.fin_kod == article_data.fin_kod)
         )
@@ -43,15 +34,17 @@ async def create_article(
         if not existing_user:
             return JSONResponse(
                 content={
-                    "status_code": 400,
+                    "status_code": 404,
                     "message": f"User with fin_kod '{article_data.fin_kod}' does not exist!"
-                }, status_code=status.HTTP_400_BAD_REQUEST
+                }, status_code=status.HTTP_404_NOT_FOUND
             )
-
+        
+        article_code = generate_article_serial()
 
         new_article = Article(
             fin_kod=article_data.fin_kod,
-            article_code=article_data.article_code,
+            article_code=article_code,
+            publication_url=getattr(article_data, "publication_url", None) if hasattr(article_data, "publication_url") else getattr(article_data, "url", None) if hasattr(article_data, "url") else None,
             created_at=datetime.utcnow()
         )
 
@@ -61,7 +54,7 @@ async def create_article(
 
         # Create az translation
         az_translation = ArticleTranslation(
-            article_code=new_article.article_code,
+            article_code=article_code,
             lang_code="az",
             article_field=article_data.article_field,
             created_at=datetime.utcnow()
@@ -71,7 +64,7 @@ async def create_article(
         # Create en translation
         en_text = await asyncio.to_thread(translate_to_english, article_data.article_field, "az")
         en_translation = ArticleTranslation(
-            article_code=new_article.article_code,
+            article_code=article_code,
             lang_code="en",
             article_field=en_text,
             created_at=datetime.utcnow()
@@ -99,14 +92,7 @@ async def create_article(
         return JSONResponse(
             content={
                 "status_code": 201,
-                "message": "Article created successfully!",
-                "data": {
-                    "id": created_article.id,
-                    "fin_kod": created_article.fin_kod,
-                    "article_code": created_article.article_code,
-                    "translations": translations,
-                    "created_at": created_article.created_at.isoformat() if created_article.created_at else None
-                }
+                "message": "Article created successfully!"
             }, status_code=status.HTTP_201_CREATED
         )
 
@@ -430,3 +416,4 @@ async def delete_article(
                 "error": str(e)
             }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+

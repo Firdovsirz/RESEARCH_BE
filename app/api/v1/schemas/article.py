@@ -7,7 +7,8 @@ class ArticleBase(BaseModel):
     fin_kod: str
     article_code: str
 
-class ArticleCreate(ArticleBase):
+class ArticleCreate(BaseModel):
+    fin_kod: str
     article_field: str
 
 class ArticleUpdate(BaseModel):

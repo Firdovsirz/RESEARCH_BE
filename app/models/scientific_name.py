@@ -12,16 +12,9 @@ class ScientificName(Base):
 
     translations = relationship(
         "ScientificNameTranslation", 
-        back_populates="scientific_names",
+        back_populates="scientific_name",
         cascade="all, delete-orphan",
         passive_deletes=True
     )
 
     auth = relationship("Auth", back_populates="scientific_names", passive_deletes=True)
-
-
-
-
-
-
-

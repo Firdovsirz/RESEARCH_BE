@@ -18,10 +18,3 @@ class Article(Base):
     )
 
     auth = relationship("Auth", back_populates="articles", passive_deletes=True)
-
-
-
-
-
-
-

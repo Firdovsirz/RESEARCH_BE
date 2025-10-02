@@ -146,6 +146,7 @@ async def verify_signup(
         )
     
     except Exception as e:
+        logging.exception("Error during signin")
         return JSONResponse(
             content={
                 "status_code": 500,
@@ -180,7 +181,7 @@ async def signin(
 
         user = query_user.scalar_one_or_none()
 
-        if not auth_user or not user or not auth_user.approved:
+        if not auth_user or not auth_user.approved:
             return JSONResponse(
                 content={
                     "status_code": 401,
@@ -220,6 +221,7 @@ async def signin(
         )
     
     except Exception as e:
+        logging.exception("Error during signin")
         return JSONResponse(
             content={
                 "status_code": 500,

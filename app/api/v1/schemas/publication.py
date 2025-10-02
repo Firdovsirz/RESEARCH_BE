@@ -7,9 +7,12 @@ class PublicationBase(BaseModel):
     fin_kod: str
     publication_code: str
 
-class PublicationCreate(PublicationBase):
+from typing import Optional
+
+class PublicationCreate(BaseModel):
+    fin_kod: str
     publication_name: str
-    publication_url: str
+    publication_url: Optional[str] = None
 
 class PublicationUpdate(BaseModel):
     publication_name: str
