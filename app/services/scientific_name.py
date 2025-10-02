@@ -7,7 +7,7 @@ from app.models.scientific_name import ScientificName
 from sqlalchemy.orm import subqueryload
 from fastapi.responses import JSONResponse
 from app.models.auth import Auth
-from app.models.scientific_name_translation import ScientificNameTranslation
+from app.models.translations.scientific_name_translation import ScientificNameTranslation
 from app.api.v1.schemas.scientific_name import (ScientificNameCreate, ScientificNameUpdate)
 from app.utils.translator import translate_to_english
 from app.db.session import get_db

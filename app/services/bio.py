@@ -7,7 +7,7 @@ from app.models.bio import Bio
 from sqlalchemy.orm import subqueryload
 from fastapi.responses import JSONResponse
 from app.models.auth import Auth
-from app.models.bio_translation import BioTranslation
+from app.models.translations.bio_translation import BioTranslation
 from app.api.v1.schemas.bio import (BioCreate, BioUpdate)
 from app.utils.translator import translate_to_english
 from app.db.session import get_db

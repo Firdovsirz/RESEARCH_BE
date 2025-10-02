@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from app.models.publication import Publication
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.translator import translate_to_english
-from app.models.publication_translation import PublicationTranslation
+from app.models.translations.publication_translation import PublicationTranslation
 from app.api.v1.schemas.publication import (
     PublicationCreate,
     PublicationUpdate,

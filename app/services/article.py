@@ -9,7 +9,7 @@ from app.models.article import Article
 from sqlalchemy.orm import subqueryload
 from fastapi.responses import JSONResponse
 from app.models.auth import Auth
-from app.models.article_translation import ArticleTranslation
+from app.models.translations.article_translation import ArticleTranslation
 from app.api.v1.schemas.article import (
     ArticleCreate,
     ArticleUpdate,

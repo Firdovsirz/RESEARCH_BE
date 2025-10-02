@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from app.utils.language import get_language
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.translator import translate_to_english
-from app.models.user_translations import UserTranslations
+from app.models.translations.user_translations import UserTranslations
 
 # Create user translations by CreateUser schema
 # translate details using trasnslator util

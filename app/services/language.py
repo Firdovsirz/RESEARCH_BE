@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from app.utils.language import get_language
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.translator import translate_to_english
-from app.models.language_translations import LanguageTranslations
+from app.models.translations.language_translations import LanguageTranslations
 
 def generate_lang_serial() -> str:
     number = random.randint(0, 99999)

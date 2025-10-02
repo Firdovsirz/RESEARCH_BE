@@ -20,4 +20,4 @@ class Publication(Base):
 
     auth = relationship("Auth", back_populates="publications", passive_deletes=True) 
 
-    from app.models.publication_translation import PublicationTranslation
+    from app.models.translations.publication_translation import PublicationTranslation

@@ -10,7 +10,7 @@ from app.models.inter_coor import InterCoor
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.translator import translate_to_english
 from app.api.v1.schemas.inter_coor import CreateInterCoor
-from app.models.inter_coor_translations import InterCoorTranslations
+from app.models.translations.inter_coor_translations import InterCoorTranslations
 import logging
 
 logger = logging.getLogger(__name__)
