@@ -4,18 +4,15 @@ from app.models.user import User
 from app.utils.password import *
 from app.db.session import get_db
 from fastapi import Depends, status
-from app.models.scopus import Scopus
+from app.models.links import Links 
 from sqlalchemy.future import select
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.api.v1.schemas.links import *
 
-async def add_scopus_service(
-    fin_kod: str,
-    scopus_url: str,
-    db: AsyncSession = Depends(get_db),
-):
+async def add_links_service(request: LinksCreate, db: AsyncSession = Depends(get_db)):
     try:
-        query = select(User).where(User.fin_kod == fin_kod)
+        query = select(User).where(User.fin_kod == request.fin_kod)
         result = await db.execute(query)
         user = result.scalars().first()
         if not user:
@@ -23,21 +20,21 @@ async def add_scopus_service(
                 status_code=status.HTTP_404_NOT_FOUND,
                 content={"message": "User not found"},
             )
-        query = select(Scopus).where(Scopus.fin_kod == fin_kod)
+        query = select(Links).where(Links.fin_kod == request.fin_kod)
         result = await db.execute(query)
         scopus_entry = result.scalars().first()
         if scopus_entry:
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                content={"message": "Scopus entry already exists for this user"},
+                content={"message": "Links entry already exists for this user"},
             )
-        new_scopus = Scopus(fin_kod=fin_kod, scopus_url=scopus_url)
-        db.add(new_scopus)
+        new_links = Links(fin_kod=request.fin_kod, scopus_url=request.scopus_url, google_scholar_url=request.google_scholar_url, webofscience_url=request.webofscience_url)
+        db.add(new_links)
         await db.commit()
-        await db.refresh(new_scopus)
+        await db.refresh(new_links)
         return JSONResponse(
             status_code=status.HTTP_201_CREATED,
-            content={"message": "Scopus entry added successfully"},
+            content={"message": "Links entry added successfully"},
         )
     except Exception as e:
         await db.rollback()
@@ -51,12 +48,12 @@ import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-async def get_scopus_service(
-    fin_kod: str,
+async def get_links_service(
+    request: LinksCreate,
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        query = select(Scopus).where(Scopus.fin_kod == fin_kod)
+        query = select(Links).where(Links.fin_kod == request.fin_kod)
         result = await db.execute(query)
         scopus_entry = result.scalars().first()
         if not scopus_entry:
@@ -72,19 +69,19 @@ async def get_scopus_service(
             },
         )
     except Exception as e:
-        logger.exception(f"Error fetching Scopus entry for fin_kod={fin_kod}")
+        logger.exception(f"Error fetching Links entry for fin_kod={request.fin_kod}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"message": f"An error occurred: {str(e)}"},
         )
 
-async def update_scopus_service(
+async def update_links_service(
+    request: LinksUpdate,
     fin_kod: str,
-    scopus_url: str,
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        query = select(Scopus).where(Scopus.fin_kod == fin_kod)
+        query = select(Links).where(Links.fin_kod == fin_kod)
         result = await db.execute(query)
         scopus_entry = result.scalars().first()
         if not scopus_entry:
@@ -95,7 +92,7 @@ async def update_scopus_service(
                     "message": "Scopus entry not found for this user"
                 }
             )
-        scopus_entry.scopus_url = scopus_url
+        scopus_entry.scopus_url = request.scopus_url
         db.add(scopus_entry)
         await db.commit()
         await db.refresh(scopus_entry)
@@ -116,12 +113,12 @@ async def update_scopus_service(
             }
         )
     
-async def delete_scopus_service(
+async def delete_links_service(
     fin_kod: str,
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        query = select(Scopus).where(Scopus.fin_kod == fin_kod)
+        query = select(Links).where(Links.fin_kod == fin_kod)
         result = await db.execute(query)
         scopus_entry = result.scalars().first()
         if not scopus_entry:

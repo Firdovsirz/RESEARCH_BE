@@ -1,8 +1,8 @@
-from app.services.scopus import *
+from app.services.links import *
 from app.db.session import get_db
 from fastapi import Depends, status
 from sqlalchemy.future import select
-from app.api.v1.schemas.scopus import *
+from app.api.v1.schemas.links import *
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.jwt_required import token_required
@@ -10,86 +10,87 @@ from fastapi import APIRouter
 
 router = APIRouter()
 @router.post(
-    "/scopus-create",
-    response_model=ScopusOut,
+    "/links-create/",
+    response_model=LinksOut,
     status_code=status.HTTP_201_CREATED,
-    summary="Add Scopus URL",
-    tags=["Scopus"],
+    summary="Add Links",
+    tags=["Links"],
 )
-async def add_scopus_endpoint(
-    scopus: ScopusCreate,
+async def add_links_endpoint(
+    links: LinksCreate,
     db: AsyncSession = Depends(get_db),
     # token: str = Depends(token_required),
 ):
-    response = await add_scopus_service(
-        fin_kod=scopus.fin_kod,
-        scopus_url=scopus.scopus_url,
+    response = await add_links_service(
+        links,
         db=db,
     )
     if isinstance(response, JSONResponse):
         return response
-    return ScopusOut.from_orm(response)
+    return LinksOut.from_orm(response)
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 @router.get(
-    "/scopus/profile/{fin_kod}",
-    response_model=ScopusOut,
+    "/links/profile/{fin_kod}",
+    response_model=LinksOut,
     status_code=status.HTTP_200_OK,
-    summary="Get Scopus URL by FIN code",
-    tags=["Scopus"],
+    summary="Get Links by FIN code",
+    tags=["Links"],
 )
-async def get_scopus_endpoint(
+async def get_links_endpoint(
     fin_kod: str,
     db: AsyncSession = Depends(get_db),
     # token: str = Depends(token_required),
 ):
-    response = await get_scopus_service(
+    response = await get_links_service(
         fin_kod=fin_kod,
         db=db,
     )
     if isinstance(response, JSONResponse):
         return response
-    return ScopusOut.from_orm(response)
+    return LinksOut.from_orm(response)
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 @router.put(
-    "/scopus/{fin_kod}/update",
-    response_model=ScopusOut,
+    "/links/update/{fin_kod}",
+    response_model=LinksOut,
     status_code=status.HTTP_200_OK,
-    summary="Update Scopus URL by FIN code",
-    tags=["Scopus"],
+    summary="Update Links by FIN code",
+    tags=["Links"],
 )
-async def update_scopus_endpoint(
+async def update_links_endpoint(
     fin_kod: str,
-    scopus_update: ScopusUpdate,
+    links_update: LinksUpdate,
     db: AsyncSession = Depends(get_db),
     # token: str = Depends(token_required),
 ):
-    response = await update_scopus_service(
+    response = await update_links_service(
         fin_kod=fin_kod,
-        scopus_url=scopus_update.scopus_url,
+        scopus_url=links_update.scopus_url,
+        google_scholar_url=links_update.google_scholar_url,
+        webofscience_url=links_update.webofscience_url,
         db=db,
     )
     if isinstance(response, JSONResponse):
         return response
-    return ScopusOut.from_orm(response)
+    return LinksOut.from_orm(response)
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 @router.delete(
-    "/scopus/{fin_kod}/delete",
+    "/links/delete/{fin_kod}",
     status_code=status.HTTP_200_OK,
-    summary="Delete Scopus URL by FIN code",
-    tags=["Scopus"],
+    summary="Delete Links by FIN code",
+    tags=["Links"],
 )
-async def delete_scopus_endpoint(
+async def delete_links_endpoint(
     fin_kod: str,
     db: AsyncSession = Depends(get_db),
     # token: str = Depends(token_required),
 ):
-    response = await delete_scopus_service(
+    response = await delete_links_service(
         fin_kod=fin_kod,
         db=db,
     )

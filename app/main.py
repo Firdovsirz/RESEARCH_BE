@@ -11,7 +11,7 @@ from app.api.v1.routes.bio import router as bio_router
 from app.api.v1.routes.work import router as work_router
 from app.api.v1.routes.user import router as user_router
 from app.api.v1.routes.auth import router as auth_router
-from app.api.v1.routes.scopus import router as scopus_router
+from app.api.v1.routes.links import router as links_router
 from app.api.v1.routes.article import router as article_router
 from app.api.v1.routes.language import router as language_router
 from app.api.v1.routes.inter_corp import router as inter_corp_router
@@ -44,7 +44,7 @@ app.include_router(bio_router, prefix="/api/bio", tags=["Bio"])
 app.include_router(work_router, prefix="/api/work", tags=["Work"])
 app.include_router(language_router, prefix="/api/language", tags=["Language"])
 app.include_router(publication_router, prefix="/api/publication", tags=["Publication"])
-app.include_router(scopus_router, prefix="/api", tags=["Scopus"])
+app.include_router(links_router, prefix="/api", tags=["Links"])
 app.include_router(inter_corp_router, prefix="/api/inter-corp", tags=["International Coorperation"])
 app.include_router(scientific_name_router, prefix="/api/scientific_name", tags=["ScientificName"])
 
