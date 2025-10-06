@@ -6,6 +6,7 @@ from app.models.user import User
 from app.models.auth import Auth
 from app.utils.password import *
 from app.db.session import get_db
+from app.models.links import Links
 from sqlalchemy.future import select
 from app.api.v1.schemas.user import *
 from fastapi import Depends, status, Query
@@ -67,7 +68,6 @@ async def create_user(
             scientific_degree_name=user_request.scientific_degree_name,
             scientific_name=user_request.scientific_name,
             bio=user_request.bio,
-            scopus_url=user_request.scopus_url,
             created_at=datetime.utcnow()
         )
 
@@ -77,7 +77,6 @@ async def create_user(
             scientific_degree_name=translate_to_english(user_request.scientific_degree_name),
             scientific_name=translate_to_english(user_request.scientific_name),
             bio=translate_to_english(user_request.bio),
-            scopus_url=user_request.scopus_url,
             created_at=datetime.utcnow()
         )
 
@@ -133,13 +132,22 @@ async def get_profile(
 
         user_translation = user_translation_query.scalar_one_or_none()
 
+        link_query = await db.execute(
+            select(Links)
+            .where(Links.fin_kod == fin_kod)
+        )
+        
+        link = link_query.scalar_one_or_none()
+
         user_details = {
             "name": user.name,
             "surname": user.surname,
             "father_name": user.father_name,
             "fin_kod": user.fin_kod,
             "email": user.email,
-            "scopus": user_translation.scopus_url,
+            "scopus": link.scopus_url,
+            "web_of_science": link.webofscience_url,
+            "google_scholar": link.google_scholar_url,
             "birth_date": user.birth_date.isoformat() if user.birth_date else None,
             "scientific_degree_name": user_translation.scientific_degree_name,
             "scientific_name": user_translation.scientific_name,

@@ -15,7 +15,5 @@ class UserTranslations(Base):
     scientific_degree_name = Column(String, nullable=False)
     scientific_name = Column(String, nullable=False)
     bio = Column(String, nullable=False)
-    scopus_url = Column(String, nullable=False)
-    # work_place = Column(String, nullable=False) (?)
     created_at = Column(DateTime, nullable=False)
     updated_at = Column(DateTime, nullable=False)

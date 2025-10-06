@@ -6,7 +6,6 @@ class CreateUser(BaseModel):
     scientific_degree_name: str
     scientific_name: str
     bio: str
-    scopus_url: str
 
 class UpdateUser(BaseModel):
     name: Optional[str] = None

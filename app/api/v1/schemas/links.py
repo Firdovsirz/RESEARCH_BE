@@ -11,10 +11,16 @@ class LinksBase(BaseModel):
     @classmethod
     def validate_scopus_url(cls, v: str):
         parsed = urlparse(v)
-        if not all([parsed.scheme in ("https://scopus.com/", "https://webofscience.com/", "https://scholar.google.com/"), parsed.netloc]):
+        
+        if parsed.scheme != "https":
             raise ValueError("Invalid URL. Must start with https://")
-        if "scopus.com" not in parsed.netloc and "webofscience.com" not in parsed.netloc and "scholar.google.com" not in parsed.netloc:
-            raise ValueError("URL must be a valid Scopus, Web of Science, or Google Scholar profile link (contain scopus.com, webofscience.com, or scholar.google.com)")
+
+        if not any(domain in parsed.netloc for domain in ["scopus.com", "webofscience.com", "scholar.google.com"]):
+            raise ValueError(
+                "URL must be a valid Scopus, Web of Science, or Google Scholar profile link "
+                "(contain scopus.com, webofscience.com, or scholar.google.com)"
+            )
+
         return v
 
 class LinksCreate(LinksBase):
