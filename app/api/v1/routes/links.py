@@ -41,7 +41,6 @@ async def add_links_endpoint(
 async def get_links_endpoint(
     fin_kod: str,
     db: AsyncSession = Depends(get_db),
-    # token: str = Depends(token_required),
 ):
     response = await get_links_service(
         fin_kod=fin_kod,

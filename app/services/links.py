@@ -49,11 +49,11 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 async def get_links_service(
-    request: LinksCreate,
+    fin_kod: str,
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        query = select(Links).where(Links.fin_kod == request.fin_kod)
+        query = select(Links).where(Links.fin_kod == fin_kod)
         result = await db.execute(query)
         scopus_entry = result.scalars().first()
         if not scopus_entry:
@@ -64,12 +64,17 @@ async def get_links_service(
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content={
-                "fin_kod": scopus_entry.fin_kod,
-                "scopus_url": scopus_entry.scopus_url
-            },
+                "status_code": 200,
+                "data": {
+                    "fin_kod": scopus_entry.fin_kod,
+                    "scopus_url": scopus_entry.scopus_url,
+                    "web_of_science": scopus_entry.webofscience_url,
+                    "google_scholar": scopus_entry.google_scholar_url
+                }
+            }
         )
     except Exception as e:
-        logger.exception(f"Error fetching Links entry for fin_kod={request.fin_kod}")
+        logger.exception(f"Error fetching Links entry for fin_kod={fin_kod}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"message": f"An error occurred: {str(e)}"},
