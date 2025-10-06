@@ -28,7 +28,7 @@ async def add_links_service(request: LinksCreate, db: AsyncSession = Depends(get
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content={"message": "Links entry already exists for this user"},
             )
-        new_links = Links(fin_kod=request.fin_kod, scopus_url=request.scopus_url, google_scholar_url=request.google_scholar_url, webofscience_url=request.webofscience_url)
+        new_links = Links(fin_kod=request.fin_kod, scopus_url=request.scopus_url, google_scholar_url=request.google_scholar_url, webofscience_url=request.webofscience_url, linkedin_url=request.linkedin_url)
         db.add(new_links)
         await db.commit()
         await db.refresh(new_links)

@@ -6,6 +6,7 @@ class LinksBase(BaseModel):
     scopus_url: Optional[str] = None
     webofscience_url: Optional[str] = None
     google_scholar_url: Optional[str] = None
+    linkedin_url: Optional[str] = None
 
     @field_validator("scopus_url")
     @classmethod
@@ -15,10 +16,10 @@ class LinksBase(BaseModel):
         if parsed.scheme != "https":
             raise ValueError("Invalid URL. Must start with https://")
 
-        if not any(domain in parsed.netloc for domain in ["scopus.com", "webofscience.com", "scholar.google.com"]):
+        if not any(domain in parsed.netloc for domain in ["scopus.com", "webofscience.com", "scholar.google.com", "linkedin.com"]):
             raise ValueError(
-                "URL must be a valid Scopus, Web of Science, or Google Scholar profile link "
-                "(contain scopus.com, webofscience.com, or scholar.google.com)"
+                "URL must be a valid Scopus, Web of Science, Google Scholar, or LinkedIn profile link "
+                "(contain scopus.com, webofscience.com, scholar.google.com, or linkedin.com in the domain)."
             )
 
         return v

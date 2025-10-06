@@ -14,3 +14,4 @@ class Links(Base):
     scopus_url = Column(Text, nullable=True)
     webofscience_url = Column(Text, nullable=True)
     google_scholar_url = Column(Text, nullable=True)
+    linkedin_url = Column(Text, nullable=True)
