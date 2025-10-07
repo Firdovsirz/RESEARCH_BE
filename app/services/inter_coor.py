@@ -142,21 +142,21 @@ async def get_inter_corp_by_fin (
                 )
             )
 
-            user_query_inter = await db.execute(
+            user_query_inter_corp = await db.execute(
                 select(InternationalCorporationsUsers)
                 .where(InternationalCorporationsUsers.inter_corp_code == inter_corp.inter_corp_code)
             )
 
-            user = user_query_inter.scalar_one_or_none()
+            user_corp = user_query_inter_corp.scalar_one_or_none()
 
             inter_corp_translation = inter_corp_translation_query.scalar_one_or_none()
 
             inter_corp_obj = {
                 "inter_corp_name": inter_corp_translation.inter_corp_name,
                 "inter_corp_code": inter_corp_translation.inter_corp_code,
-                "name": user.name,
-                "surname": user.surname,
-                "email": user.email
+                "name": user_corp.name if user_corp else None,
+                "surname": user_corp.surname if user_corp else None,
+                "email": user_corp.email if user_corp else None
             }
 
             inter_corp_arr.append(inter_corp_obj)

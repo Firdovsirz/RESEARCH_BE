@@ -236,6 +236,7 @@ async def get_all_users(
                 "father_name": user.father_name,
                 "email": user.email,
                 "bio": bio,
+                "fin_kod": user.fin_kod,
                 "birth_date": user.birth_date.isoformat() if user.birth_date else None,
                 "scientific_degree_name": scientific_degree_name,
                 "scientific_name": scientific_name,
