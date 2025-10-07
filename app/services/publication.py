@@ -15,7 +15,6 @@ from app.api.v1.schemas.publication import (
     PublicationCreate,
     PublicationUpdate,
 )
-from app.models.publication_users import PublicationUsers 
 
 def generate_publication_serial() -> str:
     number = random.randint(0, 99999)
@@ -40,15 +39,6 @@ async def create_publication(
             )
         
         publication_code = generate_publication_serial()
-
-        new_publication_user = PublicationUsers(
-            publication_code=publication_code,
-            name=publication_data.name,
-            surname=publication_data.surname,
-            email=publication_data.email
-        )
-        db.add(new_publication_user)
-        await db.commit()
 
         new_publication = Publication(
             fin_kod=publication_data.fin_kod,
@@ -140,18 +130,12 @@ async def get_all_publications(db: AsyncSession = Depends(get_db)) -> JSONRespon
                         "publication_name": translation.publication_name
                     })
                     
-            user = await db.execute(
-                select(PublicationUsers).where(PublicationUsers.publication_code == publication.publication_code)
-            )
-            user_info = user.scalar_one_or_none()
+            
             
 
             publications_data.append({
                 "id": publication.id,
                 "fin_kod": publication.fin_kod,
-                "name": user_info.name if user_info else None,
-                "surname": user_info.surname if user_info else None,
-                "email": user_info.email if user_info else None,
                 "publication_code": publication.publication_code,
                 "publication_url": publication.publication_url,
                 "translations": translations,

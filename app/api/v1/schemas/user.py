@@ -6,6 +6,7 @@ class CreateUser(BaseModel):
     scientific_degree_name: str
     scientific_name: str
     bio: str
+    image: Optional[str] = None
 
 class UpdateUser(BaseModel):
     name: Optional[str] = None

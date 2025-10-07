@@ -16,8 +16,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.translator import translate_to_english
 from app.models.translations.user_translations import UserTranslations
 
-# Create user translations by CreateUser schema
-# translate details using trasnslator util
 
 async def create_user(
     user_request: CreateUser,
@@ -61,6 +59,8 @@ async def create_user(
                     "message": "Fin kod is not valid"
                 }, status_code=status.HTTP_404_NOT_FOUND
             )
+        
+        user.image = user_request.image
         
         new_user_az = UserTranslations(
             language_code="az",
@@ -151,6 +151,7 @@ async def get_profile(
             "birth_date": user.birth_date.isoformat() if user.birth_date else None,
             "scientific_degree_name": user_translation.scientific_degree_name,
             "scientific_name": user_translation.scientific_name,
+            "image": user.image,
             "bio": user_translation.bio,
             "created_at": user.created_at.isoformat() if user.created_at else None
         }
