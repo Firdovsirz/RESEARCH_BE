@@ -12,6 +12,7 @@ from app.utils.translator import translate_to_english
 from app.api.v1.schemas.inter_coor import CreateInterCoor
 from app.models.translations.inter_coor_translations import InterCoorTranslations
 import logging
+from app.models.inter_corp_users import InternationalCorporationsUsers
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,14 @@ async def create_inter_coor (
             inter_corp_code=inter_coor_code,
             created_at=datetime.utcnow()
         )
+        new_inter_coor_user = InternationalCorporationsUsers(
+            name = inter_coor_request.name,
+            surname = inter_coor_request.surname,
+            email = inter_coor_request.email,
+            image = inter_coor_request.image,
+            inter_corp_code = inter_coor_code
+        )
+
 
         new_inter_coor_az = InterCoorTranslations(
             inter_corp_code=inter_coor_code,
@@ -58,7 +67,7 @@ async def create_inter_coor (
             inter_corp_name=translate_to_english(inter_coor_request.inter_coor_name),
             created_at=datetime.utcnow()            
         )
-
+        db.add(new_inter_coor_user)
         db.add(new_inter_coor)
         db.add(new_inter_coor_az)
         db.add(new_inter_coor_en)
@@ -133,11 +142,21 @@ async def get_inter_corp_by_fin (
                 )
             )
 
+            user_query_inter = await db.execute(
+                select(InternationalCorporationsUsers)
+                .where(InternationalCorporationsUsers.inter_corp_code == inter_corp.inter_corp_code)
+            )
+
+            user = user_query_inter.scalar_one_or_none()
+
             inter_corp_translation = inter_corp_translation_query.scalar_one_or_none()
 
             inter_corp_obj = {
                 "inter_corp_name": inter_corp_translation.inter_corp_name,
-                "inter_corp_code": inter_corp_translation.inter_corp_code
+                "inter_corp_code": inter_corp_translation.inter_corp_code,
+                "name": user.name,
+                "surname": user.surname,
+                "email": user.email
             }
 
             inter_corp_arr.append(inter_corp_obj)
