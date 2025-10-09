@@ -2,6 +2,9 @@ from pydantic import BaseModel
 from typing import Optional
 
 class CreateEducation(BaseModel):
+    fin_kod: str
+    title: str
+    university: str
     start_date: int
     end_date: Optional[int] = None
 

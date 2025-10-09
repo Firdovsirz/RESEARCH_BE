@@ -10,6 +10,7 @@ class Education(Base):
     __tablename__ = "education"
 
     id = Column(Integer, primary_key=True, index=True)
+    fin_kod = Column(String, nullable=False, unique=True)
     edu_code = Column(String(7),unique=True, nullable=False)
     start_date = Column(Integer, nullable=False)
     end_date = Column(Integer)

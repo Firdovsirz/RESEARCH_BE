@@ -1,17 +1,10 @@
-from app.services.education import (
-    get_education_by_code,
-    get_all_educations,
-    update_education,
-    CreateEducation
-    )
-from app.api.v1.schemas.education import (
-    CreateEducation
-)
+from app.services.education import *
+from app.api.v1.schemas.education import *
 from app.db.session import get_db
 from fastapi import Depends, status
-from sqlalchemy.future import select
-from fastapi.responses import JSONResponse
+from app.utils.language import get_language
 from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.responses import JSONResponse
 from app.utils.jwt_required import token_required
 from fastapi import APIRouter
 
@@ -22,42 +15,17 @@ async def create_education(
     db: AsyncSession = Depends(get_db),
     # token: str = Depends(token_required)
 ):
-    new_education = await create_education(education_request, db)
-    return JSONResponse(
-        status_code=status.HTTP_201_CREATED,
-        content={
-            "message": "Education created successfully",
-            "education": {
-                "edu_code": new_education.edu_code,
-                "start_date": new_education.start_date.isoformat(),
-                "end_date": new_education.end_date.isoformat() if new_education.end_date else None,
-                "created_at": new_education.created_at.isoformat(),
-                "updated_at": new_education.updated_at.isoformat() if new_education.updated_at else None
-            }
-        }
-    )
+    return await add_education(education_request, db)
+
 @router.get("/{edu_code}", status_code=status.HTTP_200_OK)
 async def get_education_endpoint(
-    edu_code: str,
+    fin_kod: str,
+    lang_code: str = Depends(get_language),
     db: AsyncSession = Depends(get_db),
     # token: str = Depends(token_required)
 ):
-    education = await get_education_by_code(edu_code, db)
-    if not education:
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={"message": "Education not found"}
-        )
-    return JSONResponse(
-        status_code=status.HTTP_200_OK,
-        content={
-            "edu_code": education.edu_code,
-            "start_date": education.start_date.isoformat(),
-            "end_date": education.end_date.isoformat() if education.end_date else None,
-            "created_at": education.created_at.isoformat(),
-            "updated_at": education.updated_at.isoformat() if education.updated_at else None
-        }
-    )
+    return await get_education_by_code(fin_kod, lang_code, db)
+
 @router.get("/", status_code=status.HTTP_200_OK)
 async def get_all_educations_endpoint(
     db: AsyncSession = Depends(get_db),

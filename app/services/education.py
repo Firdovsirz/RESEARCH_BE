@@ -1,18 +1,18 @@
 import random
 from datetime import datetime
-from fastapi import Depends, status
-from fastapi.responses import JSONResponse
-from sqlalchemy.future import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.db.database import get_db
+from fastapi import Depends, status
+from sqlalchemy.future import select
+from fastapi.responses import JSONResponse
+from app.utils.language import get_language
 from app.models.education import Education
-from app.models.education_translation import EducationTranslation
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.utils.translator import translate_to_english
 from app.api.v1.schemas.education import CreateEducation
+from app.models.education_translation import EducationTranslation
 
 
 def generate_edu_code():
-    """Generate a unique 7-character alphanumeric code."""
     return ''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789', k=7))
 
 
@@ -25,22 +25,32 @@ async def add_education(
 
         new_education = Education(
             edu_code=edu_code,
-            start_date=education_request.start_date,  # integer year
-            end_date=education_request.end_date,      # integer year or None
+            fin_kod=education_request.fin_kod,
+            start_date=education_request.start_date,
+            end_date=education_request.end_date,
             created_at=datetime.utcnow()
+        )
+
+        new_translation_az = EducationTranslation(
+            edu_code=edu_code,
+            lang_code="az",
+            title=education_request.title,
+            university=education_request.university
         )
 
         new_translation = EducationTranslation(
             edu_code=edu_code,
-            lang_code="en",             # default example
-            tittle=education_request.tittle if hasattr(education_request, 'tittle') else "Sample Title",
-            university=education_request.university if hasattr(education_request, 'university') else "Sample University"
+            lang_code="en",
+            title=translate_to_english(education_request.title),
+            university=education_request.university
         )
 
         db.add(new_education)
+        db.add(new_translation_az)
         db.add(new_translation)
         await db.commit()
         await db.refresh(new_education)
+        await db.refresh(new_translation_az)
         await db.refresh(new_translation)
 
         return JSONResponse(
@@ -64,30 +74,54 @@ async def add_education(
 
 
 async def get_education_by_code(
-    edu_code: str,
+    fin_kod: str,
+    lang_code: str = Depends(get_language),
     db: AsyncSession = Depends(get_db)
 ) -> JSONResponse:
     try:
-        result = await db.execute(select(Education).where(Education.edu_code == edu_code))
-        education = result.scalar_one_or_none()
+        result = await db.execute(
+            select(Education)
+            .where(Education.fin_kod == fin_kod)
+        )
 
-        if not education:
+        educations = result.scalars().all()
+
+        if not educations:
             return JSONResponse(
-                content={"status_code": 404, "message": "Education not found"},
-                status_code=status.HTTP_404_NOT_FOUND
+                content={"status_code": 204, "message": "NO CONTENT"},
+                status_code=status.HTTP_204_NO_CONTENT
             )
+        
+        education_arr = []
+
+        for education in educations:
+
+            edu_translation_query = await db.execute(
+                select(EducationTranslation)
+                .where(
+                    EducationTranslation.edu_code == education.edu_code,
+                    EducationTranslation.lang_code == lang_code
+                )
+            )
+
+            edu_traslation = edu_translation_query.scalar_one_or_none()
+
+            edu_obj = {
+                "fin_kod": education.fin_kod,
+                "start_end": education.start_date,
+                "end_date": education.end_date,
+                "title": edu_traslation.title,
+                "university": edu_traslation.university
+            }
+
+            education_arr.append(edu_obj)
+        
 
         return JSONResponse(
             content={
                 "status_code": 200,
                 "message": "Education fetched successfully.",
-                "education": {
-                    "edu_code": education.edu_code,
-                    "start_date": education.start_date,
-                    "end_date": education.end_date,
-                    "created_at": education.created_at.isoformat(),
-                    "updated_at": education.updated_at.isoformat() if education.updated_at else None
-                }
+                "education": edu_obj
             },
             status_code=status.HTTP_200_OK
         )
