@@ -17,7 +17,7 @@ async def create_education(
 ):
     return await add_education(education_request, db)
 
-@router.get("/{edu_code}", status_code=status.HTTP_200_OK)
+@router.get("/{fin_kod}", status_code=status.HTTP_200_OK)
 async def get_education_endpoint(
     fin_kod: str,
     lang_code: str = Depends(get_language),
@@ -46,7 +46,7 @@ async def get_all_educations_endpoint(
         status_code=status.HTTP_200_OK,
         content={"educations": education_list}
     )
-@router.put("/{edu_code}", status_code=status.HTTP_200_OK)
+@router.put("/{fin_kod}", status_code=status.HTTP_200_OK)
 async def update_education_endpoint(
     edu_code: str,
     education_request: CreateEducation,
