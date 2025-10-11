@@ -9,11 +9,10 @@ from app.utils.jwt_required import token_required
 from fastapi import APIRouter
 
 router = APIRouter()
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("/create", status_code=status.HTTP_201_CREATED)
 async def create_experience(
     experience_request: CreateExperience,
     db: AsyncSession = Depends(get_db),
-    # token: str = Depends(token_required)
 ):
     return await add_experience(experience_request, db)
 
@@ -22,14 +21,12 @@ async def get_experience_endpoint(
     fin_kod: str,
     lang_code: str = Depends(get_language),
     db: AsyncSession = Depends(get_db),
-    # token: str = Depends(token_required)
 ):
     return await get_experience_by_code(fin_kod, lang_code, db)
 
-@router.get("/", status_code=status.HTTP_200_OK)
+@router.get("/all", status_code=status.HTTP_200_OK)
 async def get_all_experiences_endpoint(
     db: AsyncSession = Depends(get_db),
-    # token: str = Depends(token_required)
 ):
     experiences = await get_all_experiences(db)
     experience_list = [

@@ -42,7 +42,7 @@ async def add_experience(
             exp_code=exp_code,
             lang_code="en",
             title=translate_to_english(experience_request.title),
-            university=experience_request.university
+            university=translate_to_english(experience_request.university)
         )
 
         db.add(new_experience)
@@ -80,8 +80,8 @@ async def get_experience_by_code(
 ) -> JSONResponse:
     try:
         result = await db.execute(
-            select(experience)
-            .where(experience.fin_kod == fin_kod)
+            select(Experience)
+            .where(Experience.fin_kod == fin_kod).order_by(Experience.start_date.desc())
         )
 
         experiences = result.scalars().all()
@@ -91,37 +91,34 @@ async def get_experience_by_code(
                 content={"status_code": 204, "message": "NO CONTENT"},
                 status_code=status.HTTP_204_NO_CONTENT
             )
-        
+
         experience_arr = []
 
         for experience in experiences:
-
             edu_translation_query = await db.execute(
-                select(ExperienceTranslations)
-                .where(
+                select(ExperienceTranslations).where(
                     ExperienceTranslations.exp_code == experience.exp_code,
                     ExperienceTranslations.lang_code == lang_code
                 )
             )
 
-            edu_traslation = edu_translation_query.scalar_one_or_none()
+            edu_translation = edu_translation_query.scalar_one_or_none()
 
-            edu_obj = {
+            experience_obj = {
                 "fin_kod": experience.fin_kod,
-                "start_end": experience.start_date,
+                "start_date": experience.start_date,
                 "end_date": experience.end_date,
-                "title": edu_traslation.title,
-                "university": edu_traslation.university
+                "title": edu_translation.title if edu_translation else None,
+                "university": edu_translation.university if edu_translation else None
             }
 
-            experience_arr.append(edu_obj)
-        
+            experience_arr.append(experience_obj)
 
         return JSONResponse(
             content={
                 "status_code": 200,
                 "message": "experience fetched successfully.",
-                "experience": edu_obj
+                "experiences": experience_arr
             },
             status_code=status.HTTP_200_OK
         )

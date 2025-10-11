@@ -42,7 +42,7 @@ async def add_education(
             edu_code=edu_code,
             lang_code="en",
             title=translate_to_english(education_request.title),
-            university=education_request.university
+            university=translate_to_english(education_request.university)
         )
 
         db.add(new_education)
@@ -72,7 +72,6 @@ async def add_education(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-
 async def get_education_by_code(
     fin_kod: str,
     lang_code: str = Depends(get_language),
@@ -82,6 +81,7 @@ async def get_education_by_code(
         result = await db.execute(
             select(Education)
             .where(Education.fin_kod == fin_kod)
+            .order_by(Education.start_date.desc())
         )
 
         educations = result.scalars().all()
@@ -108,7 +108,7 @@ async def get_education_by_code(
 
             edu_obj = {
                 "fin_kod": education.fin_kod,
-                "start_end": education.start_date,
+                "start_date": education.start_date,
                 "end_date": education.end_date,
                 "title": edu_traslation.title,
                 "university": edu_traslation.university
@@ -121,7 +121,7 @@ async def get_education_by_code(
             content={
                 "status_code": 200,
                 "message": "Education fetched successfully.",
-                "education": edu_obj
+                "educations": education_arr
             },
             status_code=status.HTTP_200_OK
         )
@@ -131,7 +131,6 @@ async def get_education_by_code(
             content={"status_code": 500, "error": str(e)},
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-
 
 async def get_all_educations(db: AsyncSession = Depends(get_db)) -> JSONResponse:
     try:
@@ -169,7 +168,6 @@ async def get_all_educations(db: AsyncSession = Depends(get_db)) -> JSONResponse
             content={"status_code": 500, "error": str(e)},
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-
 
 async def update_education(
     edu_code: str,
@@ -213,7 +211,6 @@ async def update_education(
             content={"status_code": 500, "error": str(e)},
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-
 
 async def delete_education(
     edu_code: str,

@@ -1,15 +1,15 @@
-from app.services.education import *
-from app.api.v1.schemas.education import *
+from fastapi import APIRouter
 from app.db.session import get_db
 from fastapi import Depends, status
+from app.services.education import *
+from app.api.v1.schemas.education import *
+from fastapi.responses import JSONResponse
 from app.utils.language import get_language
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi.responses import JSONResponse
 from app.utils.jwt_required import token_required
-from fastapi import APIRouter
 
 router = APIRouter()
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("/create", status_code=status.HTTP_201_CREATED)
 async def create_education(
     education_request: CreateEducation,
     db: AsyncSession = Depends(get_db),
