@@ -24,11 +24,12 @@ async def user_profile_endpoint(
 @router.get("/all")
 async def get_all_users_endpoint(
     lang_code: str = Depends(get_language),
+    search: str = Query(None, description="Search term for users and research areas"),
     start: int = Query(0, ge=0),
     end: int = Query(10, ge=1),
     db: AsyncSession = Depends(get_db)
 ):
-    return await get_all_users(lang_code, start, end, db)
+    return await get_all_users(lang_code, search, start, end, db)
 
 # Update user data by (patch) ("/api/user/{fin_kod}/update")
 # Only name, surname, father_name, email can be updatable

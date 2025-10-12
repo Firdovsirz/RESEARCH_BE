@@ -1,3 +1,4 @@
+import json
 from sqlalchemy import or_
 from app.utils.otp import *
 from app.utils.email import *
@@ -9,12 +10,15 @@ from app.db.session import get_db
 from app.models.links import Links
 from sqlalchemy.future import select
 from app.api.v1.schemas.user import *
+from app.db.redis_client import get_redis
 from fastapi import Depends, status, Query
 from fastapi.responses import JSONResponse
 from app.utils.language import get_language
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.research_areas import ResearchAreas
 from app.utils.translator import translate_to_english
 from app.models.translations.user_translations import UserTranslations
+from app.models.translations.research_areas_translations import ResearchAreasTranslations
 
 
 async def create_user(
@@ -174,84 +178,133 @@ async def get_profile(
 
 async def get_all_users(
     lang_code: str = Depends(get_language),
+    search: str = Query(None, description="Search term for users and research areas"),
     start: int = Query(0, ge=0),
-    end: int = Query(10, ge=1),
+    end: int = Query(50, ge=1),
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        # Get total number of users with role 2
-        total_query = await db.execute(select(Auth).where(Auth.role == 2))
-        total_auths = total_query.scalars().all()
-        total = len(total_auths)
-
-        # Get paginated users
-        auth_query = await db.execute(
-            select(Auth)
-            .where(Auth.role == 2)
-            .offset(start)
-            .limit(end - start)
-        )
-        auths = auth_query.scalars().all()
-
-        if not auths:
+        redis = await get_redis()
+        cache_key = f"users:all:{lang_code}:{start}:{end}:{search or 'all'}"
+        cached_data = await redis.get(cache_key)
+        if cached_data:
             return JSONResponse(
-                content={
-                    "status_code": 204,
-                    "message": "No content"
-                },
+                content=json.loads(cached_data),
+                status_code=status.HTTP_200_OK
+            )
+        
+        search_index_key = "users_search_index_minimal"
+        search_index_raw = await redis.get(search_index_key)
+        if search_index_raw:
+            search_index = json.loads(search_index_raw)
+        else:
+            auth_query = await db.execute(
+                select(Auth).where(Auth.role == 2)
+            )
+            auths = auth_query.scalars().all()
+
+            search_index = []
+            for auth in auths:
+                if not auth.fin_kod:
+                    continue
+
+                user_query = await db.execute(select(User).where(User.fin_kod == auth.fin_kod))
+                user = user_query.scalar_one_or_none()
+                if not user:
+                    continue
+
+                user_translations_query = await db.execute(
+                    select(UserTranslations).where(UserTranslations.fin_kod == user.fin_kod)
+                )
+                user_translations = user_translations_query.scalars().all()
+
+                research_areas_query = await db.execute(
+                    select(ResearchAreas).where(ResearchAreas.fin_kod == user.fin_kod)
+                )
+                research_areas = research_areas_query.scalars().all()
+
+                area_codes = [str(ra.area_code) for ra in research_areas if ra.area_code]
+                if area_codes:
+                    research_areas_translations_query = await db.execute(
+                        select(ResearchAreasTranslations).where(
+                            ResearchAreasTranslations.area_code.in_(area_codes)
+                        )
+                    )
+                    research_areas_translations = research_areas_translations_query.scalars().all()
+                else:
+                    research_areas_translations = []
+
+                translations_dict = {ut.language_code: ut for ut in user_translations}
+
+                research_areas_by_lang = {}
+                for rat in research_areas_translations:
+                    raw_areas = rat.area.split(",")  # split by comma
+                    for area in raw_areas:
+                        sub_areas = area.split(" and ")  # further split by "and"
+                        for sub_area in sub_areas:
+                            sub_area_clean = sub_area.strip()
+                            if sub_area_clean:
+                                research_areas_by_lang.setdefault(rat.lang_code, []).append(sub_area_clean)
+
+                for lang in translations_dict:
+                    translation = translations_dict[lang]
+                    user_obj = {
+                        "name": user.name or "",
+                        "surname": user.surname or "",
+                        "fin_kod": user.fin_kod,
+                        "scientific_degree_name": translation.scientific_degree_name or "",
+                        "scientific_name": translation.scientific_name or "",
+                        "language_code": lang,
+                        "research_areas": research_areas_by_lang.get(lang, [])
+                    }
+                    search_index.append(user_obj)
+
+            await redis.set(search_index_key, json.dumps(search_index), ex=3600)
+
+        filtered_by_lang = [u for u in search_index if u.get("language_code") == lang_code]
+
+        if search:
+            search_lower = search.strip().lower()
+            def matches_search(u):
+                fields = [
+                    u.get("name", "").strip().lower(),
+                    u.get("surname", "").strip().lower(),
+                    u.get("scientific_degree_name", "").strip().lower(),
+                    u.get("scientific_name", "").strip().lower(),
+                ]
+                # Include research areas in search
+                areas = u.get("research_areas", [])
+                fields.extend([area.strip().lower() for area in areas])
+                return any(search_lower in field for field in fields)
+
+            filtered = list(filter(matches_search, filtered_by_lang))
+        else:
+            filtered = filtered_by_lang
+
+        total = len(filtered)
+        paginated = filtered[start:end]
+
+        if not paginated:
+            response_content = {
+                "status_code": 204,
+                "message": "No content"
+            }
+            await redis.set(cache_key, json.dumps(response_content), ex=3600)
+            return JSONResponse(
+                content=response_content,
                 status_code=status.HTTP_204_NO_CONTENT
             )
 
-        users_list = []
-
-        for auth in auths:
-            if not auth.fin_kod:
-                continue
-
-            # Fetch the User
-            user_query = await db.execute(select(User).where(User.fin_kod == auth.fin_kod))
-            user = user_query.scalar_one_or_none()
-            if not user:
-                continue
-
-            # Fetch the translation
-            user_translation_query = await db.execute(
-                select(UserTranslations)
-                .where(
-                    UserTranslations.fin_kod == user.fin_kod,
-                    UserTranslations.language_code == lang_code
-                )
-            )
-            user_translation = user_translation_query.scalar_one_or_none()
-
-            # Safely get translation fields
-            scientific_degree_name = user_translation.scientific_degree_name if user_translation else None
-            scientific_name = user_translation.scientific_name if user_translation else None
-            bio = user_translation.bio if user_translation else None
-
-            # Build user object
-            user_obj = {
-                "name": user.name,
-                "surname": user.surname,
-                "father_name": user.father_name,
-                "email": user.email,
-                "bio": bio,
-                "fin_kod": user.fin_kod,
-                "birth_date": user.birth_date.isoformat() if user.birth_date else None,
-                "scientific_degree_name": scientific_degree_name,
-                "scientific_name": scientific_name,
-                "created_at": user.created_at.isoformat() if user.created_at else None
-            }
-
-            users_list.append(user_obj)
+        response_content = {
+            "status_code": 200,
+            "message": "Users fetched successfully.",
+            "total": total,
+            "users": paginated
+        }
+        await redis.set(cache_key, json.dumps(response_content), ex=3600)
 
         return JSONResponse(
-            content={
-                "status_code": 200,
-                "message": "Users fetched successfully.",
-                "total": total,
-                "users": users_list
-            },
+            content=response_content,
             status_code=status.HTTP_200_OK
         )
 
@@ -263,6 +316,7 @@ async def get_all_users(
             },
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
 
 # Update user data (patch)
 # One of these columns name, surname, father_name, email
@@ -313,4 +367,3 @@ async def update_user(
                 "error": str(e)
             }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-    

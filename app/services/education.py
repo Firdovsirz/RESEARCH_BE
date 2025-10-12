@@ -72,12 +72,32 @@ async def add_education(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+from app.db.redis_client import get_redis
+import json
+
 async def get_education_by_code(
     fin_kod: str,
     lang_code: str = Depends(get_language),
     db: AsyncSession = Depends(get_db)
 ) -> JSONResponse:
     try:
+        redis = await get_redis()
+        cache_key = f"education:{fin_kod}:{lang_code}"
+
+        cached_data = await redis.get(cache_key)
+        if cached_data:
+            print("CACHE HIT")
+            return JSONResponse(
+                content={
+                    "status_code": 200,
+                    "message": "Education fetched successfully (from cache).",
+                    "educations": json.loads(cached_data)
+                },
+                status_code=status.HTTP_200_OK
+            )
+
+        print("CACHE MISS")
+
         result = await db.execute(
             select(Education)
             .where(Education.fin_kod == fin_kod)
@@ -85,17 +105,14 @@ async def get_education_by_code(
         )
 
         educations = result.scalars().all()
-
         if not educations:
             return JSONResponse(
                 content={"status_code": 204, "message": "NO CONTENT"},
                 status_code=status.HTTP_204_NO_CONTENT
             )
-        
+
         education_arr = []
-
         for education in educations:
-
             edu_translation_query = await db.execute(
                 select(EducationTranslation)
                 .where(
@@ -103,19 +120,18 @@ async def get_education_by_code(
                     EducationTranslation.lang_code == lang_code
                 )
             )
-
-            edu_traslation = edu_translation_query.scalar_one_or_none()
+            edu_translation = edu_translation_query.scalar_one_or_none()
 
             edu_obj = {
                 "fin_kod": education.fin_kod,
                 "start_date": education.start_date,
                 "end_date": education.end_date,
-                "title": edu_traslation.title,
-                "university": edu_traslation.university
+                "title": edu_translation.title,
+                "university": edu_translation.university
             }
-
             education_arr.append(edu_obj)
-        
+
+        await redis.set(cache_key, json.dumps(education_arr), ex=3600)
 
         return JSONResponse(
             content={

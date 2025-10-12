@@ -1,8 +1,10 @@
+import json
 import random
 from datetime import datetime
 from app.db.database import get_db
 from fastapi import Depends, status
 from sqlalchemy.future import select
+from app.db.redis_client import get_redis
 from fastapi.responses import JSONResponse
 from app.utils.language import get_language
 from app.models.experience import Experience
@@ -72,18 +74,35 @@ async def add_experience(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-
 async def get_experience_by_code(
     fin_kod: str,
     lang_code: str = Depends(get_language),
     db: AsyncSession = Depends(get_db)
 ) -> JSONResponse:
     try:
+        redis = await get_redis()
+        cache_key = f"experience:{fin_kod}:{lang_code}"
+
+        cached_data = await redis.get(cache_key)
+        if cached_data:
+            print("CACHE HIT - experience")
+            return JSONResponse(
+                content={
+                    "status_code": 200,
+                    "message": "experience fetched successfully (from cache).",
+                    "experiences": json.loads(cached_data)
+                },
+                status_code=status.HTTP_200_OK
+            )
+
+        print("CACHE MISS - experience")
+
+        # 2️⃣ Fetch from DB
         result = await db.execute(
             select(Experience)
-            .where(Experience.fin_kod == fin_kod).order_by(Experience.start_date.desc())
+            .where(Experience.fin_kod == fin_kod)
+            .order_by(Experience.start_date.desc())
         )
-
         experiences = result.scalars().all()
 
         if not experiences:
@@ -93,26 +112,26 @@ async def get_experience_by_code(
             )
 
         experience_arr = []
-
         for experience in experiences:
-            edu_translation_query = await db.execute(
+            translation_query = await db.execute(
                 select(ExperienceTranslations).where(
                     ExperienceTranslations.exp_code == experience.exp_code,
                     ExperienceTranslations.lang_code == lang_code
                 )
             )
-
-            edu_translation = edu_translation_query.scalar_one_or_none()
+            translation = translation_query.scalar_one_or_none()
 
             experience_obj = {
                 "fin_kod": experience.fin_kod,
                 "start_date": experience.start_date,
                 "end_date": experience.end_date,
-                "title": edu_translation.title if edu_translation else None,
-                "university": edu_translation.university if edu_translation else None
+                "title": translation.title if translation else None,
+                "university": translation.university if translation else None
             }
-
             experience_arr.append(experience_obj)
+
+        # 3️⃣ Save to Redis for 1 hour
+        await redis.set(cache_key, json.dumps(experience_arr), ex=3600)
 
         return JSONResponse(
             content={
@@ -128,7 +147,6 @@ async def get_experience_by_code(
             content={"status_code": 500, "error": str(e)},
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-
 
 async def get_all_experiences(db: AsyncSession = Depends(get_db)) -> JSONResponse:
     try:
@@ -166,7 +184,6 @@ async def get_all_experiences(db: AsyncSession = Depends(get_db)) -> JSONRespons
             content={"status_code": 500, "error": str(e)},
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-
 
 async def update_experience(
     exp_code: str,
@@ -210,7 +227,6 @@ async def update_experience(
             content={"status_code": 500, "error": str(e)},
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-
 
 async def delete_experience(
     exp_code: str,
