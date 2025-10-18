@@ -198,9 +198,7 @@ async def get_all_users(
         if search_index_raw:
             search_index = json.loads(search_index_raw)
         else:
-            auth_query = await db.execute(
-                select(Auth).where(Auth.role == 2)
-            )
+            auth_query = await db.execute(select(Auth))
             auths = auth_query.scalars().all()
 
             search_index = []
@@ -236,11 +234,15 @@ async def get_all_users(
 
                 translations_dict = {ut.language_code: ut for ut in user_translations}
 
+                # Fetch links for the user
+                link_query = await db.execute(select(Links).where(Links.fin_kod == user.fin_kod))
+                link = link_query.scalar_one_or_none()
+
                 research_areas_by_lang = {}
                 for rat in research_areas_translations:
-                    raw_areas = rat.area.split(",")  # split by comma
+                    raw_areas = rat.area.split(",")
                     for area in raw_areas:
-                        sub_areas = area.split(" and ")  # further split by "and"
+                        sub_areas = area.split(" and ")
                         for sub_area in sub_areas:
                             sub_area_clean = sub_area.strip()
                             if sub_area_clean:
@@ -252,10 +254,16 @@ async def get_all_users(
                         "name": user.name or "",
                         "surname": user.surname or "",
                         "fin_kod": user.fin_kod,
+                        "birth_date": user.birth_date.isoformat() if user.birth_date else None,
+                        "email": user.email,
                         "scientific_degree_name": translation.scientific_degree_name or "",
                         "scientific_name": translation.scientific_name or "",
                         "language_code": lang,
-                        "research_areas": research_areas_by_lang.get(lang, [])
+                        "research_areas": research_areas_by_lang.get(lang, []),
+                        "scopus_url": link.scopus_url if link else "",
+                        "webofscience_url": link.webofscience_url if link else "",
+                        "google_scholar_url": link.google_scholar_url if link else "",
+                        "linkedin_url": link.linkedin_url if link else ""
                     }
                     search_index.append(user_obj)
 
@@ -272,7 +280,6 @@ async def get_all_users(
                     u.get("scientific_degree_name", "").strip().lower(),
                     u.get("scientific_name", "").strip().lower(),
                 ]
-                # Include research areas in search
                 areas = u.get("research_areas", [])
                 fields.extend([area.strip().lower() for area in areas])
                 return any(search_lower in field for field in fields)
