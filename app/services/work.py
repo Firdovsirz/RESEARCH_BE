@@ -138,7 +138,8 @@ async def get_works_by_fin(
 
             work_obj = {
                 "work_place": work_translation.work_place,
-                "duty": work_translation.duty
+                "duty": work_translation.duty,
+                "work_code": work.work_serial
             }
 
             works_arr.append(work_obj)
@@ -152,6 +153,123 @@ async def get_works_by_fin(
         )
     
     except Exception as e:
+        return JSONResponse(
+            content={
+                "status_code": 500,
+                "error": str(e)
+            }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+async def edit_work(
+    work_code: str,
+    work_request: CreateWork,
+    db: AsyncSession
+):
+    try:
+        work_query = await db.execute(
+            select(Work).where(Work.work_serial == work_code)
+        )
+        work = work_query.scalar_one_or_none()
+        if not work:
+            return JSONResponse(
+                content={
+                    "status_code": 404,
+                    "message": "Work not found."
+                }, status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        user_query = await db.execute(
+            select(Auth).where(Auth.fin_kod == work_request.fin_kod)
+        )
+        user = user_query.scalar_one_or_none()
+        if not user:
+            return JSONResponse(
+                content={
+                    "status_code": 404,
+                    "message": "User not found."
+                }, status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        work.fin_kod = work_request.fin_kod
+
+        for lang_code, place, duty in [
+            ("az", work_request.work_place, work_request.duty),
+            ("en", translate_to_english(work_request.work_place), translate_to_english(work_request.duty))
+        ]:
+            translation_query = await db.execute(
+                select(WorkTranslations)
+                .where(
+                    WorkTranslations.work_serial == work_code,
+                    WorkTranslations.language_code == lang_code
+                )
+            )
+            translation = translation_query.scalar_one_or_none()
+            if translation:
+                translation.work_place = place
+                translation.duty = duty
+            else:
+                # If translation doesn't exist, create it
+                new_translation = WorkTranslations(
+                    work_serial=work_code,
+                    language_code=lang_code,
+                    work_place=place,
+                    duty=duty,
+                    created_at=datetime.utcnow()
+                )
+                db.add(new_translation)
+
+        await db.commit()
+        await db.refresh(work)
+        return JSONResponse(
+            content={
+                "status_code": 200,
+                "message": "Work entry and translations updated successfully."
+            }, status_code=status.HTTP_200_OK
+        )
+    except Exception as e:
+        await db.rollback()
+        return JSONResponse(
+            content={
+                "status_code": 500,
+                "error": str(e)
+            }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+async def delete_work(
+    work_code: str,
+    db: AsyncSession
+):
+    try:
+        work_query = await db.execute(
+            select(Work).where(Work.work_serial == work_code)
+        )
+        work = work_query.scalar_one_or_none()
+        if not work:
+            return JSONResponse(
+                content={
+                    "status_code": 404,
+                    "message": "Work not found."
+                }, status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        translations_query = await db.execute(
+            select(WorkTranslations).where(WorkTranslations.work_serial == work_code)
+        )
+        translations = translations_query.scalars().all()
+        for translation in translations:
+            await db.delete(translation)
+
+        await db.delete(work)
+
+        await db.commit()
+        return JSONResponse(
+            content={
+                "status_code": 200,
+                "message": "Work entry and translations deleted successfully."
+            }, status_code=status.HTTP_200_OK
+        )
+    except Exception as e:
+        await db.rollback()
         return JSONResponse(
             content={
                 "status_code": 500,

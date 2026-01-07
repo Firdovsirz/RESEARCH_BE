@@ -55,6 +55,12 @@ async def add_experience(
         await db.refresh(new_translation_az)
         await db.refresh(new_translation)
 
+        # Refresh Redis cache for this user's experiences
+        redis = await get_redis()
+        keys = await redis.keys(f"experience:{experience_request.fin_kod}:*")
+        for key in keys:
+            await redis.delete(key)
+
         return JSONResponse(
             content={
                 "status_code": 201,
@@ -125,6 +131,7 @@ async def get_experience_by_code(
                 "fin_kod": experience.fin_kod,
                 "start_date": experience.start_date,
                 "end_date": experience.end_date,
+                "exp_code": experience.exp_code,
                 "title": translation.title if translation else None,
                 "university": translation.university if translation else None
             }
@@ -191,7 +198,7 @@ async def update_experience(
     db: AsyncSession = Depends(get_db)
 ) -> JSONResponse:
     try:
-        result = await db.execute(select(experience).where(experience.exp_code == exp_code))
+        result = await db.execute(select(Experience).where(Experience.exp_code == exp_code))
         experience = result.scalar_one_or_none()
 
         if not experience:
@@ -204,8 +211,35 @@ async def update_experience(
         experience.end_date = experience_request.end_date
         experience.updated_at = datetime.utcnow()
 
+        az_translation_query = await db.execute(
+            select(ExperienceTranslations).where(
+                ExperienceTranslations.exp_code == exp_code,
+                ExperienceTranslations.lang_code == "az"
+            )
+        )
+        az_translation = az_translation_query.scalar_one_or_none()
+        if az_translation:
+            az_translation.title = experience_request.title
+            az_translation.university = experience_request.university
+
+        en_translation_query = await db.execute(
+            select(ExperienceTranslations).where(
+                ExperienceTranslations.exp_code == exp_code,
+                ExperienceTranslations.lang_code == "en"
+            )
+        )
+        en_translation = en_translation_query.scalar_one_or_none()
+        if en_translation:
+            en_translation.title = translate_to_english(experience_request.title)
+            en_translation.university = translate_to_english(experience_request.university)
+
         await db.commit()
         await db.refresh(experience)
+
+        redis = await get_redis()
+        keys = await redis.keys(f"experience:{experience.fin_kod}:*")
+        for key in keys:
+            await redis.delete(key)
 
         return JSONResponse(
             content={
@@ -233,7 +267,7 @@ async def delete_experience(
     db: AsyncSession = Depends(get_db)
 ) -> JSONResponse:
     try:
-        result = await db.execute(select(experience).where(experience.exp_code == exp_code))
+        result = await db.execute(select(Experience).where(Experience.exp_code == exp_code))
         experience = result.scalar_one_or_none()
 
         if not experience:
@@ -242,11 +276,24 @@ async def delete_experience(
                 status_code=status.HTTP_404_NOT_FOUND
             )
 
+        translations_query = await db.execute(
+            select(ExperienceTranslations).where(ExperienceTranslations.exp_code == exp_code)
+        )
+        translations = translations_query.scalars().all()
+        for translation in translations:
+            await db.delete(translation)
+
         await db.delete(experience)
         await db.commit()
 
+        # Clear Redis cache for this experience
+        redis = await get_redis()
+        keys = await redis.keys(f"experience:{experience.fin_kod}:*")
+        for key in keys:
+            await redis.delete(key)
+
         return JSONResponse(
-            content={"status_code": 200, "message": "experience deleted successfully."},
+            content={"status_code": 200, "message": "experience and translations deleted successfully."},
             status_code=status.HTTP_200_OK
         )
 

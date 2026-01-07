@@ -13,3 +13,7 @@ class UpdateUser(BaseModel):
     surname: Optional[str] = None
     father_name: Optional[str] = None
     email: Optional[str] = None
+    image: Optional[str] = None
+    scientific_degree_name: Optional[str] = None
+    scientific_name: Optional[str] = None
+    bio: Optional[str] = None

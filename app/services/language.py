@@ -137,9 +137,11 @@ async def get_languages_by_fin(
             lang_translation = lang_translation_query.scalar_one_or_none()
 
             language_obj = {
+                "id": lang.id,
                 "language_short_name": lang.language_short_name,
                 "language_level": lang.language_level,
-                "language_name": lang_translation.language_name
+                "language_name": lang_translation.language_name,
+                "lang_serial": lang.lang_serial
             }
 
             langs_arr.append(language_obj)
@@ -158,4 +160,56 @@ async def get_languages_by_fin(
                 "status_code": 500,
                 "error": str(e)
             }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+async def delete_language(
+    lang_serial: str,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        language_query = await db.execute(
+            select(Language)
+            .where(Language.lang_serial == lang_serial)
+        )
+        language = language_query.scalar_one_or_none()
+
+        lang_translation_query = await db.execute(
+            select(LanguageTranslations)
+            .where(LanguageTranslations.lang_serial == lang_serial)
+        )
+        lang_translations = lang_translation_query.scalars().all()
+
+        if not language or not lang_translations:
+            return JSONResponse(
+                content={
+                    "status_code": 404,
+                    "message": "Language not found."
+                },
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        for translation in lang_translations:
+            await db.delete(translation)
+
+        await db.delete(language)
+
+        await db.commit()
+
+        return JSONResponse(
+            content={
+                "status_code": 200,
+                "message": "Language and related translations deleted successfully."
+            },
+            status_code=status.HTTP_200_OK
+        )
+
+    except Exception as e:
+        await db.rollback()
+        return JSONResponse(
+            content={
+                "status_code": 500,
+                "error": str(e)
+            },
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

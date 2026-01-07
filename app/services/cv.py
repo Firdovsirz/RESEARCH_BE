@@ -3,6 +3,7 @@ from fastapi import status
 from fastapi import Depends
 from app.models.cv import Cv
 from datetime import datetime
+from app.models.auth import Auth
 from app.models.user import User
 from app.db.session import get_db
 from sqlalchemy.future import select
@@ -110,6 +111,68 @@ async def get_cv(
         )
 
     except Exception as e:
+        return JSONResponse(
+            content={
+                "status_code": 500,
+                "message": f"Internal server error: {str(e)}"
+            },
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+async def delete_cv(
+    fin_kod: str,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        auth_query = await db.execute(
+            select(Auth)
+            .where(Auth.fin_kod == fin_kod)
+        )
+        user = auth_query.scalar_one_or_none()
+
+        if not user:
+            return JSONResponse(
+                content={
+                    "status_code": 404,
+                    "message": "User not found."
+                }, status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        cv_query = await db.execute(
+            select(Cv)
+            .where(Cv.fin_kod == fin_kod)
+        )
+        cv = cv_query.scalar_one_or_none()
+
+        if not cv:
+            return JSONResponse(
+                content={
+                    "status_code": 404,
+                    "message": "CV not found."
+                }, status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        if os.path.exists(cv.cv_path):
+            os.remove(cv.cv_path)
+
+        user_folder = os.path.dirname(cv.cv_path)
+        if os.path.isdir(user_folder) and not os.listdir(user_folder):
+            os.rmdir(user_folder)
+
+        await db.delete(cv)
+        await db.commit()
+
+        return JSONResponse(
+            content={
+                "status_code": 200,
+                "message": "CV deleted successfully."
+            },
+            status_code=status.HTTP_200_OK
+        )
+
+    except Exception as e:
+        await db.rollback()
         return JSONResponse(
             content={
                 "status_code": 500,

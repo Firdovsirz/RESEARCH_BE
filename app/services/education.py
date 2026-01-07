@@ -53,6 +53,12 @@ async def add_education(
         await db.refresh(new_translation_az)
         await db.refresh(new_translation)
 
+        # Refresh Redis cache for the user
+        redis = await get_redis()
+        keys = await redis.keys(f"education:{education_request.fin_kod}:*")
+        for key in keys:
+            await redis.delete(key)
+
         return JSONResponse(
             content={
                 "status_code": 201,
@@ -127,6 +133,7 @@ async def get_education_by_code(
                 "start_date": education.start_date,
                 "end_date": education.end_date,
                 "title": edu_translation.title,
+                "edu_code":education.edu_code,
                 "university": edu_translation.university
             }
             education_arr.append(edu_obj)
@@ -204,8 +211,37 @@ async def update_education(
         education.end_date = education_request.end_date
         education.updated_at = datetime.utcnow()
 
+        # Update Azerbaijani translation
+        az_translation_result = await db.execute(
+            select(EducationTranslation).where(
+                EducationTranslation.edu_code == edu_code,
+                EducationTranslation.lang_code == "az"
+            )
+        )
+        az_translation = az_translation_result.scalar_one_or_none()
+        if az_translation:
+            az_translation.title = education_request.title
+            az_translation.university = education_request.university
+
+        # Update English translation
+        en_translation_result = await db.execute(
+            select(EducationTranslation).where(
+                EducationTranslation.edu_code == edu_code,
+                EducationTranslation.lang_code == "en"
+            )
+        )
+        en_translation = en_translation_result.scalar_one_or_none()
+        if en_translation:
+            en_translation.title = translate_to_english(education_request.title)
+            en_translation.university = translate_to_english(education_request.university)
+
         await db.commit()
         await db.refresh(education)
+
+        redis = await get_redis()
+        keys = await redis.keys(f"education:{education.fin_kod}:*")
+        for key in keys:
+            await redis.delete(key)
 
         return JSONResponse(
             content={
@@ -242,8 +278,21 @@ async def delete_education(
                 status_code=status.HTTP_404_NOT_FOUND
             )
 
+        translations_result = await db.execute(
+            select(EducationTranslation).where(EducationTranslation.edu_code == edu_code)
+        )
+        translations = translations_result.scalars().all()
+
+        for translation in translations:
+            await db.delete(translation)
+
         await db.delete(education)
         await db.commit()
+
+        redis = await get_redis()
+        keys = await redis.keys(f"education:{education.fin_kod}:*")
+        for key in keys:
+            await redis.delete(key)
 
         return JSONResponse(
             content={"status_code": 200, "message": "Education deleted successfully."},

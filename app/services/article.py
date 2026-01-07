@@ -1,21 +1,22 @@
-import asyncio
-import random
-from datetime import datetime
-from app.utils.language import get_language
-from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import Depends, status
-from sqlalchemy import select, delete
-from app.models.article import Article
-from sqlalchemy.orm import subqueryload
-from fastapi.responses import JSONResponse
-from app.models.auth import Auth
-from app.models.translations.article_translation import ArticleTranslation
 from app.api.v1.schemas.article import (
     ArticleCreate,
     ArticleUpdate,
 )
-from app.utils.translator import translate_to_english
+import asyncio
+import random
+from datetime import datetime
 from app.db.session import get_db
+from app.models.auth import Auth
+from fastapi import Depends, status
+from sqlalchemy import select, delete
+from app.models.article import Article
+from sqlalchemy.orm import subqueryload
+from app.db.redis_client import get_redis
+from fastapi.responses import JSONResponse
+from app.utils.language import get_language
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.utils.translator import translate_to_english
+from app.models.translations.article_translation import ArticleTranslation
 
 def generate_article_serial() -> str:
     number = random.randint(0, 99999)
@@ -44,7 +45,6 @@ async def create_article(
         new_article = Article(
             fin_kod=article_data.fin_kod,
             article_code=article_code,
-            publication_url=getattr(article_data, "publication_url", None) if hasattr(article_data, "publication_url") else getattr(article_data, "url", None) if hasattr(article_data, "url") else None,
             created_at=datetime.utcnow()
         )
 
@@ -155,7 +155,8 @@ async def get_article_by_fin_kod(
             article_translation = translation_query.scalar_one_or_none()
 
             article_obj = {
-                "article_field": article_translation.article_field
+                "article_field": article_translation.article_field,
+                "article_code": article.article_code
             }
 
             article_arr.append(article_obj)
@@ -340,6 +341,12 @@ async def update_article(
         if en_translation:
             await db.refresh(en_translation)
 
+        # Clear related Redis cache
+        redis = await get_redis()
+        keys = await redis.keys(f"education:{article.fin_kod}:*")
+        for key in keys:
+            await redis.delete(key)
+
         query = select(Article).where(
             Article.article_code == article_code
         ).options(subqueryload(Article.translations))
@@ -382,38 +389,47 @@ async def update_article(
 # DELETE Article
 async def delete_article(
     article_code: str,
-    db: AsyncSession = Depends(get_db)) -> JSONResponse:
+    db: AsyncSession = Depends(get_db)
+) -> JSONResponse:
     try:
-        article_result = await db.execute(
-            select(Article).where(Article.article_code == article_code)
-        )
-        article = article_result.scalar_one_or_none()
+        # Fetch the article
+        result = await db.execute(select(Article).where(Article.article_code == article_code))
+        article = result.scalar_one_or_none()
 
         if not article:
             return JSONResponse(
-                content={
-                    "status_code": 404,
-                    "message": "Article not found!"
-                }, status_code=status.HTTP_404_NOT_FOUND
+                content={"status_code": 404, "message": "Article not found"},
+                status_code=status.HTTP_404_NOT_FOUND
             )
 
-        await db.execute(delete(ArticleTranslation).where(ArticleTranslation.article_code == article_code))
-        await db.execute(delete(Article).where(Article.article_code == article_code))
+        # Fetch all translations
+        translations_result = await db.execute(
+            select(ArticleTranslation).where(ArticleTranslation.article_code == article_code)
+        )
+        translations = translations_result.scalars().all()
+
+        # Delete each translation
+        for translation in translations:
+            await db.delete(translation)
+
+        # Delete the main article
+        await db.delete(article)
         await db.commit()
 
+        # Clear related Redis cache
+        redis = await get_redis()
+        keys = await redis.keys(f"education:{article.fin_kod}:*")
+        for key in keys:
+            await redis.delete(key)
+
         return JSONResponse(
-            content={
-                "status_code": 200,
-                "message": "Article deleted successfully!"
-            }, status_code=status.HTTP_200_OK
+            content={"status_code": 200, "message": "Article deleted successfully."},
+            status_code=status.HTTP_200_OK
         )
 
     except Exception as e:
         await db.rollback()
         return JSONResponse(
-            content={
-                "status_code": 500,
-                "error": str(e)
-            }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+            content={"status_code": 500, "error": str(e)},
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-

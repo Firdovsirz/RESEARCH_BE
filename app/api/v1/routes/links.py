@@ -1,3 +1,4 @@
+from fastapi import APIRouter
 from app.services.links import *
 from app.db.session import get_db
 from fastapi import Depends, status
@@ -6,11 +7,11 @@ from app.api.v1.schemas.links import *
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.jwt_required import token_required
-from fastapi import APIRouter
+from app.utils.api_key_checker import check_api_key
 
 router = APIRouter()
 @router.post(
-    "/links-create/",
+    "/create",
     response_model=LinksOut,
     status_code=status.HTTP_201_CREATED,
     summary="Add Links",
@@ -19,7 +20,7 @@ router = APIRouter()
 async def add_links_endpoint(
     links: LinksCreate,
     db: AsyncSession = Depends(get_db),
-    # token: str = Depends(token_required),
+    user = Depends(token_required([0, 1, 2]))
 ):
     response = await add_links_service(
         links,
@@ -32,7 +33,7 @@ async def add_links_endpoint(
 #-------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 @router.get(
-    "/links/profile/{fin_kod}",
+    "/{fin_kod}",
     response_model=LinksOut,
     status_code=status.HTTP_200_OK,
     summary="Get Links by FIN code",
@@ -40,6 +41,7 @@ async def add_links_endpoint(
 )
 async def get_links_endpoint(
     fin_kod: str,
+    api_key: str = Depends(check_api_key),
     db: AsyncSession = Depends(get_db),
 ):
     response = await get_links_service(
@@ -53,7 +55,7 @@ async def get_links_endpoint(
 #-------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 @router.put(
-    "/links/update/{fin_kod}",
+    "/{fin_kod}/update",
     response_model=LinksOut,
     status_code=status.HTTP_200_OK,
     summary="Update Links by FIN code",
@@ -63,13 +65,11 @@ async def update_links_endpoint(
     fin_kod: str,
     links_update: LinksUpdate,
     db: AsyncSession = Depends(get_db),
-    # token: str = Depends(token_required),
+    user = Depends(token_required([0, 1, 2]))
 ):
     response = await update_links_service(
+        links_update,
         fin_kod=fin_kod,
-        scopus_url=links_update.scopus_url,
-        google_scholar_url=links_update.google_scholar_url,
-        webofscience_url=links_update.webofscience_url,
         db=db,
     )
     if isinstance(response, JSONResponse):
@@ -79,18 +79,20 @@ async def update_links_endpoint(
 #-------------------------------------------------------------------------------------------------------------------------------------------------------#
 
 @router.delete(
-    "/links/delete/{fin_kod}",
+    "/{link_id}/delete/{url_name}",
     status_code=status.HTTP_200_OK,
     summary="Delete Links by FIN code",
     tags=["Links"],
 )
 async def delete_links_endpoint(
-    fin_kod: str,
+    link_id: int,
+    url_name: str,
     db: AsyncSession = Depends(get_db),
-    # token: str = Depends(token_required),
+    user = Depends(token_required([0, 1, 2]))
 ):
     response = await delete_links_service(
-        fin_kod=fin_kod,
+        link_id=link_id,
+        url_name=url_name,
         db=db,
     )
     return response

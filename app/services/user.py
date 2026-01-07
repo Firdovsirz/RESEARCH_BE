@@ -149,9 +149,9 @@ async def get_profile(
             "father_name": user.father_name,
             "fin_kod": user.fin_kod,
             "email": user.email,
-            "scopus": link.scopus_url,
-            "web_of_science": link.webofscience_url,
-            "google_scholar": link.google_scholar_url,
+            "scopus": link.scopus_url if link else None,
+            "web_of_science": link.webofscience_url if link else None,
+            "google_scholar": link.google_scholar_url if link else None,
             "birth_date": user.birth_date.isoformat() if user.birth_date else None,
             "scientific_degree_name": user_translation.scientific_degree_name,
             "scientific_name": user_translation.scientific_name,
@@ -234,7 +234,6 @@ async def get_all_users(
 
                 translations_dict = {ut.language_code: ut for ut in user_translations}
 
-                # Fetch links for the user
                 link_query = await db.execute(select(Links).where(Links.fin_kod == user.fin_kod))
                 link = link_query.scalar_one_or_none()
 
@@ -263,13 +262,17 @@ async def get_all_users(
                         "scopus_url": link.scopus_url if link else "",
                         "webofscience_url": link.webofscience_url if link else "",
                         "google_scholar_url": link.google_scholar_url if link else "",
-                        "linkedin_url": link.linkedin_url if link else ""
+                        "linkedin_url": link.linkedin_url if link else "",
+                        "image": user.image
                     }
                     search_index.append(user_obj)
 
             await redis.set(search_index_key, json.dumps(search_index), ex=3600)
 
-        filtered_by_lang = [u for u in search_index if u.get("language_code") == lang_code]
+        # filtered_by_lang = [u for u in search_index if u.get("language_code") == lang_code]
+
+        # Do not filter by language code; include all users regardless of language
+        users_to_filter = search_index
 
         if search:
             search_lower = search.strip().lower()
@@ -284,9 +287,9 @@ async def get_all_users(
                 fields.extend([area.strip().lower() for area in areas])
                 return any(search_lower in field for field in fields)
 
-            filtered = list(filter(matches_search, filtered_by_lang))
+            filtered = list(filter(matches_search, users_to_filter))
         else:
-            filtered = filtered_by_lang
+            filtered = users_to_filter
 
         total = len(filtered)
         paginated = filtered[start:end]
@@ -354,6 +357,9 @@ async def update_user(
         for key, value in update_dict.items():
             if hasattr(user, key):
                 setattr(user, key, value)
+
+        if "image" in update_dict:
+            user.image = update_dict["image"]
 
         user.updated_at = datetime.utcnow()
 

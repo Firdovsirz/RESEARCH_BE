@@ -1,3 +1,4 @@
+import logging
 from sqlalchemy import or_
 from app.utils.jwt import *
 from app.utils.otp import *
@@ -16,8 +17,6 @@ from app.services.otp import validate_otp
 from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.utils.translator import translate_to_english
-import logging
 
 templates = Jinja2Templates(directory="templates")
 
@@ -403,5 +402,109 @@ async def reject_user(
             content={
                 "status_code": 500,
                 "error": str(e)
+            }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+async def get_app_waiting_users(
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        
+        auth_query = await db.execute(
+            select(Auth)
+            .where(Auth.approved == "false")
+        )
+
+        auth_users = auth_query.scalars().all()
+
+        if not auth_users:
+            return JSONResponse(
+                content={
+                    "status_code": 204
+                }, status_code=204
+            )
+        
+        users_arr = []
+        
+        for auth_user in auth_users:
+
+            user_query = await db.execute(
+                select(User)
+                .where(User.fin_kod == auth_user.fin_kod)
+            )
+
+            user = user_query.scalar_one_or_none()
+
+            user_obj = {
+                "id": user.id,
+                "name": user.name,
+                "surname": user.surname,
+                "father_name": user.father_name,
+                "email": user.email,
+                "birth_date": user.birth_date.isoformat() if user.birth_date else None,
+                "created_at": user.created_at.isoformat() if user.created_at else None
+            }
+
+            users_arr.append(user_obj)
+        
+        return JSONResponse(
+            content={
+                "status_code": 200,
+                "message": "Approve waiting users fetched successfully.",
+                "users": users_arr
+            }
+        )
+    
+    except Exception as e:
+        return JSONResponse(
+            content={
+                "status_code": 500,
+                "error": str(e)
+            }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+async def reject_user(
+    fin_kod: str,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        auth_query = await db.execute(
+            select(Auth)
+            .where(Auth.fin_kod == fin_kod)
+        )
+
+        auth_user = auth_query.scalar_one_or_none()
+
+        if not auth_user:
+            return JSONResponse(
+                content={
+                    "status_code": 204
+                }, status_code=204
+            )
+        
+        user_query = await db.execute(
+            select(User)
+            .where(User.fin_kod == fin_kod)
+        )
+
+        user = user_query.scalar_one_or_none()
+
+        if user:
+            await db.delete(user)
+        
+        await db.delete(auth_user)
+
+        return JSONResponse(
+            content={
+                "status_code": 200,
+                "message": "User not found."
+            }, status_code=status.HTTP_200_OK
+        )
+    
+    except Exception as e:
+        return JSONResponse(
+            content={
+                "status_code": 500,
+                "message": "Internal Error"
             }, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
         )

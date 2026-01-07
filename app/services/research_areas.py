@@ -67,6 +67,37 @@ async def create_area(
         await db.refresh(new_area_az)
         await db.refresh(new_area_en)
 
+        # Refresh Redis cache for this fin_kod
+        try:
+            redis = await get_redis()
+            for lang_code in ["az", "en"]:
+                cache_key = f"area:{area_request.fin_kod}:{lang_code}"
+                areas_query = await db.execute(
+                    select(ResearchAreas)
+                    .where(ResearchAreas.fin_kod == area_request.fin_kod)
+                )
+                areas = areas_query.scalars().all()
+
+                areas_arr = []
+                for area in areas:
+                    area_translation_query = await db.execute(
+                        select(ResearchAreasTranslations)
+                        .where(
+                            ResearchAreasTranslations.area_code == area.area_code,
+                            ResearchAreasTranslations.lang_code == lang_code
+                        )
+                    )
+                    translation = area_translation_query.scalar_one_or_none()
+                    areas_arr.append({
+                        "fin_kod": area.fin_kod,
+                        "area": translation.area if translation else "",
+                        "area_code": area.area_code
+                    })
+
+                await redis.set(cache_key, json.dumps(areas_arr), ex=3600)
+        except Exception:
+            pass  # Ignore Redis errors
+
         return JSONResponse(
             content={
                 "status_code": 201,
@@ -90,7 +121,6 @@ async def get_area_by_fin_code(
         redis = await get_redis()
         cache_key = f"area:{fin_kod}:{lang_code}"
 
-        # 1️⃣ Check Redis first
         cached_data = await redis.get(cache_key)
         if cached_data:
             print("CACHE HIT - research areas")
@@ -104,7 +134,6 @@ async def get_area_by_fin_code(
 
         print("CACHE MISS - research areas")
 
-        # 2️⃣ Fetch user and areas from DB
         user_query = await db.execute(
             select(Auth)
             .where(Auth.fin_kod == fin_kod)
@@ -139,7 +168,8 @@ async def get_area_by_fin_code(
             area_translation = area_query.scalar_one_or_none()
             area_obj = {
                 "fin_kod": area.fin_kod,
-                "area": area_translation.area
+                "area": area_translation.area,
+                "area_code": area.area_code
             }
             areas_arr.append(area_obj)
 
@@ -148,6 +178,134 @@ async def get_area_by_fin_code(
 
         return JSONResponse(
             content={"status_code": 200, "areas": areas_arr},
+            status_code=status.HTTP_200_OK
+        )
+
+    except Exception as e:
+        return JSONResponse(
+            content={"status_code": 500, "error": str(e)},
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+async def delete_area(
+    fin_kod: str,
+    area_code: str,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        # Check if the area exists
+        area_query = await db.execute(
+            select(ResearchAreas)
+            .where(
+                ResearchAreas.fin_kod == fin_kod,
+                ResearchAreas.area_code == area_code
+            )
+        )
+        area = area_query.scalar_one_or_none()
+
+        if not area:
+            return JSONResponse(
+                content={
+                    "status_code": 404,
+                    "message": "Area not found."
+                },
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        # Delete translations directly
+        await db.execute(
+            delete(ResearchAreasTranslations)
+            .where(ResearchAreasTranslations.area_code == area_code)
+        )
+
+        # Delete the main area
+        await db.execute(
+            delete(ResearchAreas)
+            .where(
+                ResearchAreas.fin_kod == fin_kod,
+                ResearchAreas.area_code == area_code
+            )
+        )
+
+        # Commit the transaction
+        await db.commit()
+
+        # Clear Redis cache if used
+        try:
+            redis = await get_redis()
+            await redis.delete(f"area:{fin_kod}:az")
+            await redis.delete(f"area:{fin_kod}:en")
+        except Exception:
+            pass  # Ignore Redis errors
+
+        return JSONResponse(
+            content={
+                "status_code": 200,
+                "message": "Area deleted successfully."
+            },
+            status_code=status.HTTP_200_OK
+        )
+
+    except Exception as e:
+        return JSONResponse(
+            content={"status_code": 500, "error": str(e)},
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+async def edit_area(
+    area_code: str,
+    area_request: CreateArea,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        area_query = await db.execute(
+            select(ResearchAreas)
+            .where(
+                ResearchAreas.fin_kod == area_request.fin_kod,
+                ResearchAreas.area_code == area_code
+            )
+        )
+        area = area_query.scalar_one_or_none()
+
+        if not area:
+            return JSONResponse(
+                content={
+                    "status_code": 404,
+                    "message": "Area not found."
+                },
+                status_code=status.HTTP_404_NOT_FOUND
+            )
+
+        for lang_code in ["az", "en"]:
+            area_translation_query = await db.execute(
+                select(ResearchAreasTranslations)
+                .where(
+                    ResearchAreasTranslations.area_code == area_code,
+                    ResearchAreasTranslations.lang_code == lang_code
+                )
+            )
+            translation = area_translation_query.scalar_one_or_none()
+            if translation:
+                if lang_code == "az":
+                    translation.area = area_request.research_area
+                else:
+                    translation.area = translate_to_english(area_request.research_area)
+                db.add(translation)
+
+        await db.commit()
+
+        try:
+            redis = await get_redis()
+            await redis.delete(f"area:{area_request.fin_kod}:az")
+            await redis.delete(f"area:{area_request.fin_kod}:en")
+        except Exception:
+            pass
+
+        return JSONResponse(
+            content={
+                "status_code": 200,
+                "message": "Area updated successfully."
+            },
             status_code=status.HTTP_200_OK
         )
 

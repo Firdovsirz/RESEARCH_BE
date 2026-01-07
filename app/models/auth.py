@@ -20,6 +20,9 @@ class Auth(Base):
     fin_kod = Column(String(7), nullable=False, unique=True, index=True)
     email = Column(String(255), nullable=True, unique=True)
     role = Column(Integer, nullable=False, default=2)
+    # 0 - dev 
+    # 1 - admin
+    # 2 - user
     password = Column(String(255), nullable=True)
     approved = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime, nullable=False)

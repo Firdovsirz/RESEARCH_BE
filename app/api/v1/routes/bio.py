@@ -1,8 +1,3 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.session import get_db
-from app.utils.language import get_language
-from app.api.v1.schemas.bio import BioCreate, BioUpdate 
 from app.services.bio import (
     create_bio,
     get_all_bios,
@@ -10,6 +5,12 @@ from app.services.bio import (
     update_bio,
     delete_bio
 )
+from app.db.session import get_db
+from fastapi import APIRouter, Depends
+from app.utils.language import get_language
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.utils.jwt_required import token_required
+from app.api.v1.schemas.bio import BioCreate, BioUpdate
 
 router = APIRouter()
 
@@ -17,7 +18,8 @@ router = APIRouter()
 @router.post("/create")
 async def add_bio(
     bio_data: BioCreate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    user = Depends(token_required([0, 1, 2]))
 ):
     return await create_bio(bio_data, db)
 
@@ -42,7 +44,8 @@ async def get_bio(
 async def edit_bio(
     bio_code: str,
     update_data: BioUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    user = Depends(token_required([0, 1, 2]))
 ):
     return await update_bio(bio_code, update_data, db)
 
@@ -50,6 +53,7 @@ async def edit_bio(
 @router.delete("/{bio_code}")
 async def remove_bio(
     bio_code: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    user = Depends(token_required([0, 1, 2]))
 ):
     return await delete_bio(bio_code, db)

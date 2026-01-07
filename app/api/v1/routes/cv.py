@@ -4,6 +4,7 @@ from app.api.v1.schemas.cv import *
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.jwt_required import token_required
+from app.utils.api_key_checker import check_api_key
 
 router = APIRouter()
 
@@ -14,6 +15,7 @@ router = APIRouter()
 @router.get("/{fin_kod}")
 async def get_cv_endpoint(
     fin_kod: str,
+    api_key: str = Depends(check_api_key),
     db: AsyncSession = Depends(get_db)
 ):
     return await get_cv(fin_kod, db)
@@ -25,6 +27,15 @@ async def get_cv_endpoint(
 @router.post("/create")
 async def add_cv_endpoint(
     cv_request: CreateCv = Depends(CreateCv.as_form),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    user = Depends(token_required([0, 1, 2]))
 ):
     return await add_cv(cv_request, db)
+
+@router.delete("/{fin_kod}/delete")
+async def delete_dv_endpoint(
+    fin_kod: str,
+    db: AsyncSession = Depends(get_db),
+    user = Depends(token_required([0, 1, 2]))
+):
+    return await delete_cv(fin_kod, db)

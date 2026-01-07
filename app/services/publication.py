@@ -15,6 +15,7 @@ from app.api.v1.schemas.publication import (
     PublicationCreate,
     PublicationUpdate,
 )
+from app.db.redis_client import get_redis
 
 def generate_publication_serial() -> str:
     number = random.randint(0, 99999)
@@ -74,6 +75,9 @@ async def create_publication(
         await db.refresh(new_publication)
         await db.refresh(az_translation)
         await db.refresh(en_translation)
+
+        redis = await get_redis()
+        await redis.delete(f"publication:{publication_data.fin_kod}")
 
         query = select(Publication).where(Publication.publication_code == new_publication.publication_code).options(subqueryload(Publication.translations))
         
@@ -224,13 +228,13 @@ async def get_publication_by_code(
                 )
             
             publication_obj = {
-                    "id": publication.id,
-                    "fin_kod": publication.fin_kod,
-                    "publication_url": publication.publication_url,
-                    "publication_code": publication.publication_code,
-                    "publication_name": translation.publication_name,
-                    "lang_code": translation.lang_code,
-                    "created_at": publication.created_at.isoformat() if publication.created_at else None
+                "id": publication.id,
+                "fin_kod": publication.fin_kod,
+                "publication_url": publication.publication_url,
+                "publication_code": publication.publication_code,
+                "publication_name": translation.publication_name,
+                "lang_code": translation.lang_code,
+                "created_at": publication.created_at.isoformat() if publication.created_at else None
             }
 
             publications_arr.append(publication_obj)
@@ -310,6 +314,11 @@ async def update_publication(
         if en_translation:
             await db.refresh(en_translation)
 
+        redis = await get_redis()
+        keys = await redis.keys(f"publication:{publication.fin_kod}:*")
+        for key in keys:
+            await redis.delete(key)
+
         query = select(Publication).where(
             Publication.publication_code == publication_code
         ).options(subqueryload(Publication.translations))
@@ -353,7 +362,8 @@ async def update_publication(
 # DELETE Publication
 async def delete_publication(
     publication_code: str,
-    db: AsyncSession = Depends(get_db)) -> JSONResponse:
+    db: AsyncSession = Depends(get_db)
+) -> JSONResponse:
     try:
         publication_result = await db.execute(
             select(Publication).where(Publication.publication_code == publication_code)
@@ -368,9 +378,22 @@ async def delete_publication(
                 }, status_code=status.HTTP_404_NOT_FOUND
             )
 
-        await db.execute(delete(PublicationTranslation).where(PublicationTranslation.publication_code == publication_code))
-        await db.execute(delete(Publication).where(Publication.publication_code == publication_code))
+        # Delete translations individually
+        translations_result = await db.execute(
+            select(PublicationTranslation).where(PublicationTranslation.publication_code == publication_code)
+        )
+        translations = translations_result.scalars().all()
+        for translation in translations:
+            await db.delete(translation)
+
+        await db.delete(publication)
+
         await db.commit()
+
+        redis = await get_redis()
+        keys = await redis.keys(f"publication:{publication.fin_kod}:*")
+        for key in keys:
+            await redis.delete(key)
 
         return JSONResponse(
             content={

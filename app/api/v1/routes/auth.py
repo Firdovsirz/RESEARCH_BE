@@ -68,3 +68,12 @@ async def reject_user_endpoint(
     db: AsyncSession = Depends(get_db)
 ):
     return await reject_user(fin_kod, db)
+
+# Get approve waiting approved
+# Where Auth approve == 2
+
+@router.get("/pending-users")
+async def pending_users(
+    db: AsyncSession = Depends(get_db)
+):
+    return await get_app_waiting_users(db)

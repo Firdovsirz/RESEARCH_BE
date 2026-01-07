@@ -13,9 +13,6 @@ class PublicationCreate(BaseModel):
     fin_kod: str
     publication_name: str
     publication_url: Optional[str] = None
-    name : str
-    surname : str
-    email : str
 
 class PublicationUpdate(BaseModel):
     publication_name: str
