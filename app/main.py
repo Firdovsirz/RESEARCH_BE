@@ -41,7 +41,7 @@ app.state.check_api_key = os.getenv("API_KEY")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://researchers.aztu.edu.az", "http://localhost:5173", "http://researcher.karamshukurlu.site"],
+    allow_origins=["https://researchers.aztu.edu.az", "http://localhost:5173", "https://researcher.karamshukurlu.site"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
