@@ -1,7 +1,3 @@
-## Database Schema — CREATE TABLE Queries
-
-```sql
--- user
 CREATE TABLE "user" (
     id SERIAL PRIMARY KEY,
     name VARCHAR NOT NULL,
@@ -17,7 +13,6 @@ CREATE TABLE "user" (
     CONSTRAINT uq_user_email UNIQUE (email)
 );
 
--- auth
 CREATE TABLE auth (
     id SERIAL PRIMARY KEY,
     fin_kod VARCHAR(7) NOT NULL UNIQUE,
@@ -280,4 +275,4 @@ CREATE TABLE user_translations (
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP NOT NULL
 );
-```
+

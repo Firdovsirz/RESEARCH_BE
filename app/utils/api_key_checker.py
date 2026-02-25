@@ -2,7 +2,8 @@ from fastapi import Request, HTTPException, status
 
 ALLOWED_DOMAINS = {
     "https://researchers.aztu.edu.az",
-    "http://localhost:5173"
+    "http://localhost:5173",
+    "http://researchers.karamshukurlu.site"
 }
 
 def check_api_key(request: Request):
