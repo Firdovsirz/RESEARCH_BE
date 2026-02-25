@@ -21,11 +21,12 @@ clean_url = urlunparse(parsed._replace(query=new_query))
 
 async_database_url = clean_url.replace("postgresql://", "postgresql+asyncpg://")
 
-ssl_context = ssl.create_default_context()
+use_ssl = os.getenv("DB_SSL", "true").lower() != "false"
+connect_args = {"ssl": ssl.create_default_context()} if use_ssl else {}
 
 engine = create_async_engine(
     async_database_url,
-    connect_args={"ssl": ssl_context},
+    connect_args=connect_args,
     echo=True,
     future=True,
 )
