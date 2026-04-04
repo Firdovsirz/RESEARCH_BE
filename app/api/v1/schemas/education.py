@@ -12,7 +12,7 @@ class CreateEducation(BaseModel):
     end_date: Optional[int] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class EducationResponse(BaseModel):
@@ -23,4 +23,4 @@ class EducationResponse(BaseModel):
     updated_at: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True

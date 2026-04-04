@@ -35,4 +35,4 @@ class LinksOut(LinksBase):
     fin_kod: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True

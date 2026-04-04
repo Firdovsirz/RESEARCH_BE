@@ -42,8 +42,11 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      - ./app:/app/app
+      - ./migrations:/app/migrations
       - ./static:/app/static
       - ./app/logs:/app/app/logs
+      - ./alembic.ini:/app/alembic.ini
     depends_on:
       postgres:
         condition: service_healthy

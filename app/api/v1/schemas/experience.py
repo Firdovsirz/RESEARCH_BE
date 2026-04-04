@@ -9,7 +9,7 @@ class CreateExperience(BaseModel):
     end_date: Optional[int] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class ExperienceResponse(BaseModel):
@@ -20,4 +20,4 @@ class ExperienceResponse(BaseModel):
     updated_at: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True

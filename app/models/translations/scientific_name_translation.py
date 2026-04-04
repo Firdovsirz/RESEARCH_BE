@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Text, DateTime, ForeignKey, func, ForeignKey 
+from sqlalchemy import Column, String, Integer, Text, DateTime, ForeignKey, func
 from sqlalchemy.orm import relationship
 from app.db.database import Base
 
@@ -14,5 +14,5 @@ class ScientificNameTranslation(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # add relationship back to ScientificName
-    scientific_name = relationship("ScientificName", back_populates="translations")
+    # relationship back to ScientificName
+    scientific_name_rel = relationship("ScientificName", back_populates="translations")
