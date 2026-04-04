@@ -1,5 +1,5 @@
 from app.services.otp import *
-from app.db.session import get_db
+from app.db.database import get_db
 from app.services.language import *
 from fastapi import APIRouter, Depends
 from app.api.v1.schemas.language import *

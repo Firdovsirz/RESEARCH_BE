@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.db.session import get_db
+from app.db.database import get_db
 from fastapi import Depends, status
 from app.services.education import *
 from app.api.v1.schemas.education import *

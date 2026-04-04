@@ -1,5 +1,5 @@
 from app.services.otp import *
-from app.db.session import get_db
+from app.db.database import get_db
 from app.api.v1.schemas.otp import *
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,4 +25,4 @@ async def validate_otp_endpoint(
     otp_request: ValidateOtp,
     db: AsyncSession = Depends(get_db)
 ):
-    return await validate_otp(otp_request, db)
+    return await validate_otp_service(otp_request, db)

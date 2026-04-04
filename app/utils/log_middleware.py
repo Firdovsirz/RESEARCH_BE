@@ -59,5 +59,3 @@ class LogRequestsMiddleware(BaseHTTPMiddleware):
 
         return response
 
-def log_requests(app):
-    app.add_middleware(LogRequestsMiddleware)

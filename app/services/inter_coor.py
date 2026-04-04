@@ -2,7 +2,7 @@ import random
 from datetime import datetime
 from sqlalchemy import select
 from app.models.auth import Auth
-from app.db.session import get_db
+from app.db.database import get_db
 from fastapi import Depends, status
 from fastapi.responses import JSONResponse
 from app.utils.language import get_language

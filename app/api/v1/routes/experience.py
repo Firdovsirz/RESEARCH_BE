@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.db.session import get_db
+from app.db.database import get_db
 from fastapi import Depends, status
 from app.services.experience import *
 from fastapi.responses import JSONResponse

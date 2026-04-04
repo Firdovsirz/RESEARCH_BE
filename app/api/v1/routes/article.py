@@ -6,7 +6,7 @@ from app.services.article import (
     delete_article,
     get_article_by_fin_kod
 )
-from app.db.session import get_db
+from app.db.database import get_db
 from fastapi import APIRouter, Depends
 from app.utils.language import get_language
 from sqlalchemy.ext.asyncio import AsyncSession

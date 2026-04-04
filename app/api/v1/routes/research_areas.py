@@ -1,5 +1,5 @@
 from typing import Optional
-from app.db.session import get_db
+from app.db.database import get_db
 from fastapi import APIRouter, Depends
 from app.services.research_areas import *
 from app.utils.language import get_language

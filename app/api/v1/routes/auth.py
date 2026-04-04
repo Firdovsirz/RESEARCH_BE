@@ -1,7 +1,7 @@
 from typing import Annotated
 from app.services.auth import *
 from fastapi import Path, Request
-from app.db.session import get_db
+from app.db.database import get_db
 from app.api.v1.schemas.auth import *
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession

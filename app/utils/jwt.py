@@ -27,7 +27,7 @@ def encode_auth_token(fin_kod, role, approved):
         return auth_token
 
     except Exception as e:
-        return str(e)
+        raise HTTPException(status_code=500, detail=f"Error encoding auth token: {str(e)}")
     
 
 def decode_auth_token(auth_token):
@@ -43,10 +43,10 @@ def decode_auth_token(auth_token):
 
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
-    except jwt.InvalidTokenError as e:
+    except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Error decoding token")
+        raise HTTPException(status_code=500, detail=f"Error decoding token: {str(e)}")
 
 def encode_otp_token(fin_kod, otp):
     try:
@@ -63,7 +63,7 @@ def encode_otp_token(fin_kod, otp):
         return auth_token
 
     except Exception as e:
-        return str(e)
+         raise HTTPException(status_code=500, detail=f"Error encoding otp token: {str(e)}")
     
 
 def decode_otp_token(otp_token):
@@ -77,7 +77,7 @@ def decode_otp_token(otp_token):
 
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
-    except jwt.InvalidTokenError as e:
+    except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Error decoding token")
+        raise HTTPException(status_code=500, detail=f"Error decoding token: {str(e)}")

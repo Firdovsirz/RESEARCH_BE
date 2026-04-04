@@ -10,7 +10,7 @@ from app.models.auth import Auth
 from app.models.translations.scientific_name_translation import ScientificNameTranslation
 from app.api.v1.schemas.scientific_name import (ScientificNameCreate, ScientificNameUpdate)
 from app.utils.translator import translate_to_english
-from app.db.session import get_db
+from app.db.database import get_db
 
 # CREATE ScientificName
 async def create_scientific_name(

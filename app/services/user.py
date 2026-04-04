@@ -6,7 +6,7 @@ from datetime import datetime
 from app.models.user import User
 from app.models.auth import Auth
 from app.utils.password import *
-from app.db.session import get_db
+from app.db.database import get_db
 from app.models.links import Links
 from sqlalchemy.future import select
 from app.api.v1.schemas.user import *

@@ -1,7 +1,7 @@
 import random
 from datetime import datetime
 from app.models.auth import Auth
-from app.db.session import get_db
+from app.db.database import get_db
 from fastapi import Depends, status
 from sqlalchemy.future import select
 from app.models.language import Language

@@ -1,6 +1,6 @@
 from app.services.otp import *
 from app.services.work import *
-from app.db.session import get_db
+from app.db.database import get_db
 from app.api.v1.schemas.work import *
 from fastapi import APIRouter, Depends
 from app.utils.language import get_language

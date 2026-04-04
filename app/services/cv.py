@@ -5,7 +5,7 @@ from app.models.cv import Cv
 from datetime import datetime
 from app.models.auth import Auth
 from app.models.user import User
-from app.db.session import get_db
+from app.db.database import get_db
 from sqlalchemy.future import select
 from app.api.v1.schemas.cv import CreateCv
 from fastapi.responses import JSONResponse

@@ -2,7 +2,7 @@ from app.utils.otp import *
 from app.utils.email import *
 from app.models.user import User
 from app.utils.password import *
-from app.db.session import get_db
+from app.db.database import get_db
 from fastapi import Depends, status
 from app.models.links import Links 
 from sqlalchemy.future import select

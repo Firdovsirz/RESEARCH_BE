@@ -2,7 +2,7 @@ import random
 from datetime import datetime
 from app.models.auth import Auth
 from app.models.work import Work
-from app.db.session import get_db
+from app.db.database import get_db
 from fastapi import Depends, status
 from sqlalchemy.future import select
 from app.api.v1.schemas.work import *

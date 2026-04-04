@@ -1,5 +1,5 @@
 from app.services.cv import *
-from app.db.session import get_db
+from app.db.database import get_db
 from app.api.v1.schemas.cv import *
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession

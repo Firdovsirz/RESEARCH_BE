@@ -5,7 +5,7 @@ from app.api.v1.schemas.article import (
 import asyncio
 import random
 from datetime import datetime
-from app.db.session import get_db
+from app.db.database import get_db
 from app.models.auth import Auth
 from fastapi import Depends, status
 from sqlalchemy import select, delete
