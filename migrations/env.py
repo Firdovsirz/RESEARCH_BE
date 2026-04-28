@@ -54,6 +54,14 @@ config = context.config
 section = config.config_ini_section
 db_url = os.getenv("DATABASE_URL")
 if db_url:
+    from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+    parsed = urlparse(db_url)
+    query_params = parse_qs(parsed.query)
+    query_params.pop("sslmode", None)
+    query_params.pop("channel_binding", None)
+    new_query = urlencode(query_params, doseq=True)
+    db_url = urlunparse(parsed._replace(query=new_query))
+    
     # Alembic needs the async driver for the online migration if using async_engine_from_config
     if "postgresql://" in db_url:
         db_url = db_url.replace("postgresql://", "postgresql+asyncpg://")

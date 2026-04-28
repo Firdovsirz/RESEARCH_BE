@@ -50,7 +50,7 @@ app = FastAPI(
 
 # Configuration
 app.state.check_api_key = os.getenv("API_KEY")
-allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "https://researchers.aztu.edu.az,http://localhost:5173,http://researchers.karamshukurlu.site")
+allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "https://researchers.aztu.edu.az,http://localhost:5173,http://researchers.karamshukurlu.site,http://localhost:8001,http://127.0.0.1:8001")
 allowed_origins = [o.strip() for o in allowed_origins_str.split(",") if o.strip()]
 
 # Global Exception Handlers
